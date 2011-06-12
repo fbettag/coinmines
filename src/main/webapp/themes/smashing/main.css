@@ -13,16 +13,16 @@
 
 /***** Global *****/
 /* Body */
-	body {
-		background: #F5F4EF url('images/bg.png');
-		color: #000305;
-		font-size: 87.5%; /* Base font size: 14px */
-		font-family: 'Trebuchet MS', Trebuchet, 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-		line-height: 1.429;
-		margin: 0;
-		padding: 0;
-		text-align: left;
-	}
+body {
+	background: #F5F4EF url('images/bg.png');
+	color: #000305;
+	font-size: 87.5%; /* Base font size: 14px */
+	font-family: 'Trebuchet MS', Trebuchet, 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+	line-height: 1.429;
+	margin: 0;
+	padding: 0;
+	text-align: left;
+}
 
 /* Headings */
 h2 {font-size: 1.571em}	/* 22px */
@@ -319,6 +319,7 @@ img.left, figure.left {float: right; margin: 0 0 2em 2em;}
 #about .url:link, #about .url:visited {text-decoration: none;}
 
 #about .bio {float: right; width: 500px;}
+#about label {min-width:100px; float:left; text-align:right; padding-right:25px;}
 
 /*
 	Footer

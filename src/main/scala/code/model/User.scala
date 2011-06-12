@@ -11,6 +11,7 @@ import net.liftweb.sitemap.{Menu}
 object User extends User with MetaMegaProtoUser[User] {
 	override def dbTableName = "users" // define the DB table name
 	override def fieldOrder = List(id, email, locale, timezone, password, hashrate, shares_total, shares_round, shares_stale, shares_round_estimate, donatePercent, locked)
+	override def signupFields = List(email, locale, timezone, password)
 
 	override val basePath: List[String] = "users" :: Nil
 	override def skipEmailValidation = true
@@ -69,7 +70,17 @@ class User extends MegaProtoUser[User] {
 	object shares_stale extends MappedInt(this)
 	object shares_round_estimate extends MappedInt(this)
 
-	object donatePercent extends MappedInt(this) {
+	object payoutlock extends MappedBoolean(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = false
+	}
+
+	object idlewarning extends MappedBoolean(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = false
+	}
+
+	object donatePercent extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 2) {
 		override def dbNotNull_? = true
 		override def defaultValue = 0
 	}

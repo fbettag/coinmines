@@ -1,0 +1,88 @@
+<div id="main" class="lift:surround?with=smashing&at=contentbody">
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="/" class="fn url">Your Account</a></strong>
+			<span class="role">General informations</span>
+		</span>
+
+		<div class="lift:Account.details bio">
+			<label>Wallet</label><account:wallet></account:wallet><br/><br/>
+			<label>E-Mail</label><account:email></account:email><br/><br/>
+			<label>Donation in %</label><account:donation></account:donation><br/><br/>
+			<label>Payout Lock</label><account:payoutlock></account:payoutlock><br/><br/>
+			<label>Idle Warning</label><account:idlewarning></account:idlewarning><br/><br/>
+		</div>
+	</div>
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="/" class="fn url">Your Workers</a></strong>
+			<span class="role">List of your Workers</span>
+		</span>
+
+		<div class="lift:Worker.list bio">
+			<label>New Worker Name</label><workers:newname/><br/><br/>
+			<table>
+				<tr>
+					<th>Worker Name</th>
+					<th>Hashrate</th>
+					<th>Last Hash</th>
+					<th>Password</th>
+					<th>Actions</th>
+				</tr>
+				<tbody id="worker_list">
+				<workers:table>
+					<workers:entry>
+					<tr>
+						<th><worker:user/><worker:name/></th>
+						<th><worker:hashrate/></th>
+						<th><worker:lasthash/></th>
+						<th><worker:password/></th>
+						<th><worker:delete/></th>
+					</tr>
+					</workers:entry>
+				</workers:table>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="/" class="fn url">Your Earnings</a></strong>
+			<span class="role">List of your Transactions</span>
+		</span>
+
+		<table class="bio">
+		</table>
+	</div>
+</section>
+
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="/" class="fn url">How to use?</a></strong>
+			<span class="role">Windows examples</span>
+		</span>
+
+		<span class="bio">
+			<strong>poclbm.exe --host=coinmines.host --port=8332 --user=worker_name --pass=worker_pwd -d 1</strong><br/><br/>
+			<strong>phoenix.exe -u http://worker_name:worker_pwd@coinmines.host:8332/ -k poclbm DEVICE=1</strong><br/><br/>
+		</span>
+	</div>
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<span class="role">Linux examples</span>
+		</span>
+
+		<span class="bio">
+			<strong>./poclbm.py --host=coinmines.host --port=8332 --user=worker_name --pass=worker_pwd -d 1</strong><br/><br/>
+			<strong>./phoenix.py -u http://worker_name:worker_pwd@coinmines.host:8332/ -k poclbm DEVICE=1</strong><br/><br/>
+			<br/>
+		</span>
+	</div>
+</section>
+
+</div>
