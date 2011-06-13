@@ -2,12 +2,33 @@
 <section class="body">
 	<div id="about" class="vcard body">
 		<span class="primary">
-			<strong><a href="/" class="fn url">Your Account</a></strong>
+			<strong><a href="" class="fn url lift:Account.balance">Balance</a></strong>
+			<span class="role">Your Balance</span>
+		</span>
+
+		<div class="bio">
+			<label>Wallet</label>
+			<span class="lift:Account.wallet"></span>
+
+			<br/><br/>
+
+			<label>Send coins</label>
+			<div>
+				<span class="lift:Account.sendcoins">
+				</span>
+				<span id="sent_coins" style="display:none">Your transaction should appear in your wallet <strong>shortly</strong>.</span>
+			</div>
+		</div>
+	</div>
+
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">Your Account</a></strong>
 			<span class="role">General informations</span>
 		</span>
 
 		<div class="lift:Account.details bio">
-			<label>Wallet</label><account:wallet></account:wallet><br/><br/>
 			<label>E-Mail</label><account:email></account:email><br/><br/>
 			<label>Donation in %</label><account:donation></account:donation><br/><br/>
 			<label>Payout Lock</label><account:payoutlock></account:payoutlock><br/><br/>
@@ -17,38 +38,22 @@
 
 	<div id="about" class="vcard body">
 		<span class="primary">
-			<strong><a href="/" class="fn url">Your Workers</a></strong>
+			<strong><a href="" class="fn url">Your Workers</a></strong>
 			<span class="role">List of your Workers</span>
 		</span>
 
-		<div class="lift:Worker.list bio">
-			<label>New Worker Name</label><workers:newname></workers:newname><br/><br/>
-			<table>
-				<thead>
-				<tr>
-					<th>Worker Name</th>
-					<th>Hashrate</th>
-					<th>Last Hash</th>
-					<th>Password</th>
-					<th>Actions</th>
-				</tr>
-				</thead>
-				<tbody id="worker_list" lift:bind="workers:table">
-					<tr lift:bind="workers:row">
-						<th><worker:user></worker:user><worker:name></worker:name></th>
-						<th><worker:hashrate></worker:hashrate></th>
-						<th><worker:lasthash></worker:lasthash></th>
-						<th><worker:password></worker:password></th>
-						<th><worker:delete></worker:delete></th>
-					</tr>
-				</tbody>
-			</table>
+		<div class="bio">
+			<br/>
+			<label>New Worker Name</label><span class="lift:Worker.add"></span><br/><br/>
+		</div>
+
+		<div class="lift:Worker.list bio" style="width:700px">
 		</div>
 	</div>
 
 	<div id="about" class="vcard body">
 		<span class="primary">
-			<strong><a href="/" class="fn url">Your Earnings</a></strong>
+			<strong><a href="" class="fn url">Your Payments</a></strong>
 			<span class="role">List of your Transactions</span>
 		</span>
 
@@ -76,7 +81,7 @@
 <section class="body">
 	<div id="about" class="vcard body">
 		<span class="primary">
-			<strong><a href="/" class="fn url">How to use?</a></strong>
+			<strong><a href="" class="fn url">How to use?</a></strong>
 			<span class="role">Windows examples</span>
 		</span>
 

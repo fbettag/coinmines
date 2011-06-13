@@ -34,6 +34,11 @@ object User extends User with MetaMegaProtoUser[User] {
 		super.login
 	}
 
+	def isAdmin_?(): Boolean = this.currentUser match {
+		case Full(u: User) => (u.superUser)
+		case _ => false
+	}
+
 	override def screenWrap = Full(
 		<lift:surround with="smashing" at="contentbody">
 				<lift:bind/>
@@ -85,8 +90,9 @@ class User extends MegaProtoUser[User] {
 		override def defaultValue = 0
 	}
 
+	def balance = 40.02
 	def balances: List[AccountBalance] = AccountBalance.findAll(By(AccountBalance.user, this.id))
-	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id))
-	def shares: List[Share] = Share.findAll(By(Share.user, this.id))
+	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
+	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
 	def shareHistory: List[ShareHistory] = ShareHistory.findAll(By(ShareHistory.user, this.id))
 }

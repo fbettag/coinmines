@@ -20,3 +20,16 @@ Update dependencies with sbt:
 Update run jetty:
 
 <code>sbt ~jetty-run</code>
+
+
+PostgreSQL Console:
+
+<code>
+INSERT INTO settings (setting, value) VALUES
+	('current_workers', 0),
+	('current_hashrate', 0),
+	('current_users', 0),
+	('current_roundshares', 0),
+	('sitepercent', 2.0);
+</code>
+

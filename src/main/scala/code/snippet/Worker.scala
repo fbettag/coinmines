@@ -22,80 +22,60 @@ class Worker extends Loggable {
 	def user = { User.currentUser.open_! }
 	def workers = { user.workers }
 
+	/* helpers */
+	def addWorker(name: String) = {
+		var worker = PoolWorker.create.user(user).username(user.email + "_" + name)
+		worker.save
+		logger.info("New Worker %s - Name: %s".format(worker.id, worker.username))
+		js.jquery.JqJsCmds.AppendHtml("worker_list", buildRow(worker))
+	}
+
+
 	def updateName(worker: PoolWorker, name: String) = {
-//			worker.name(name).save
-//			logger.info("Worker %s - New Name: %s".format(worker.id, name))
+			logger.info("Worker %s - New Name: %s".format(worker.id, name))
+			worker.username(user.email + "_" + name).save
+			null
 	}
 
 	def updatePassword(worker: PoolWorker, password: String) = {
-//			worker.password(password).save
-//			logger.info("Worker %s - New Password".format(worker.id))
+			logger.info("Worker %s - New Password".format(worker.id))
+			worker.password(password).save
+			null
 	}
 
-	def buildWorkerTable(xhtml: NodeSeq) : NodeSeq = {
-		logger.info("count: %s".format(workers.length))
-		logger.info("email: %s".format(user.email))
-
-		workers.flatMap({ worker =>
-			bind("worker", chooseTemplate("workers", "row", xhtml),
-				"user" -> Text("%s_".format(user.email)),
-				"name" -> SHtml.ajaxText(worker.name, updateName(worker, _), "style" -> "width: 80px;"),
-				"hashrate" -> Text(worker.hashrate.toString),
-				"lasthash" -> Text(worker.lasthash.toString),
-				"password" -> SHtml.ajaxText(worker.password, updatePassword(worker, _), "style" -> "width: 80px;")
-			)
-		})
+	def deleteWorker(worker: PoolWorker) = {
+		logger.info("Worker %s - Delete: %s".format(worker.id, worker.username))
+		worker.delete_!
+		js.jquery.JqJsCmds.FadeOut("row_%s".format(worker.id), 200, 200)
 	}
 
-	def list(xhtml: NodeSeq) : NodeSeq = {
+	/* snippets */
+	def add = SHtml.ajaxText("new_worker", addWorker)
 
-		def entryTable = buildWorkerTable(xhtml)
+	def buildRow(worker: PoolWorker) = <xml:group>
+		<tr id={"row_%s".format(worker.id)}>
+			<td>{user.email}_{SHtml.ajaxText(worker.username.replaceFirst("^%s_".format(user.email), ""), updateName(worker, _))}</td>
+			<td>{"%s MH/sec".format(worker.hashrate)}</td>
+			<td>{worker.lasthash.toString}</td>
+			<td>{SHtml.ajaxText(worker.password, updatePassword(worker, _), "class" -> "worker_password", "type" -> "password")}</td>
+			<td>{a(() => deleteWorker(worker), <span>{S.??("delete")}</span>)}</td>
+		</tr>
+	</xml:group>
 
-		def addWorker(name: String) {
-			var worker = PoolWorker.create.user(user).name(name)
-			worker.save
-			logger.info("New Worker %s - Name: %s".format(worker.id, worker.name))
-			JsCmds.SetHtml("worker_list", entryTable)
-		}
-
-		logger.info("------------")
-		logger.info(entryTable)
-		logger.info("------------")
-
-		bind("workers", xhtml,
-			"table" -> entryTable,
-			"newname" -> SHtml.ajaxText("worker", addWorker)
-		)
-/*
-		def updateWallet(wallet: String) = {
-			workers.wallet(wallet).save
-			logger.info("workers %s - New Wallet: %s".format(workers.id, wallet))
-		}
-
-		def updateEmail(email: String) = {
-			workers.email(email).save
-			logger.info("workers %s - New E-Mail: %s".format(workers.id, email))
-		}
-
-		def updateDonation(donation: String) = {
-			var donatePercent = donation.replaceFirst(",", ".")
-			workers.donatePercent.setFromString(donatePercent)
-			workers.save
-			logger.info("workers %s - New Donation: %s %%".format(workers.id, donatePercent))
-		}
-		
-		def updatePayoutlock(bool: Boolean) = {
-			workers.payoutlock(bool).save
-			logger.info("workers %s - Payout Lock: %s".format(workers.id, bool))
-		}
-	
-		def updateIdlewarning(bool: Boolean) = {
-			workers.idlewarning(bool).save
-			logger.info("workers %s - Idle Warning: %s".format(workers.id, bool))
-		}
-
-*/
-	}
+	def list =
+		<table>
+			<thead>
+				<tr>
+					<th>{S.??("Worker Name")}</th>
+					<th>{S.??("Hashrate")}</th>
+					<th>{S.??("Last Hash")}</th>
+					<th>{S.??("Password")}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody id="worker_list">
+				{workers.flatMap(buildRow _)}
+			</tbody>
+		</table>
 
 }
-

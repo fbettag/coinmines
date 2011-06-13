@@ -21,7 +21,7 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 
 	object sendAddress extends MappedString(this, 255) {
 		override def dbIndexed_? = true
-		override def dbNotNull_? = true
+//		override def dbNotNull_? = true
 	}
 
 	object balance extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
