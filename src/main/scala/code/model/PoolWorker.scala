@@ -17,8 +17,7 @@ class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK {
 		override def dbNotNull_? = true
 	}
 
-	object username extends MappedString(this, 30) {
-		// only allow [a-zA-Z0-9_-]
+	object username extends MappedString(this, 255) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
 	}

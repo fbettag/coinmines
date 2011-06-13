@@ -33,3 +33,11 @@ INSERT INTO settings (setting, value) VALUES
 	('sitepercent', 2.0);
 </code>
 
+
+In pushpool's server.json:
+
+<code>
+	"sharelog" : true,
+	"stmt.pwdb" : "SELECT password FROM pool_worker WHERE username = $1",
+	"stmt.sharelog" : "INSERT INTO shares (rem_host, username, our_result, upstream_result, reason, solution, timestamp_c) values ($1, $2, $3, $4, $5, decode($6, 'hex'), NOW())"
+</code>

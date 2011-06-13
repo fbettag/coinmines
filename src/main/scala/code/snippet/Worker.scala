@@ -22,9 +22,11 @@ class Worker extends Loggable {
 	def user = { User.currentUser.open_! }
 	def workers = { user.workers }
 
+	def stripName(str: String) = str.replaceAll("[^a-zA-Z0-9_-]+", "")
+
 	/* helpers */
 	def addWorker(name: String) = {
-		var worker = PoolWorker.create.user(user).username(user.email + "_" + name)
+		var worker = PoolWorker.create.user(user).username(user.email + "_" + stripName(name))
 		worker.save
 		logger.info("New Worker %s - Name: %s".format(worker.id, worker.username))
 		js.jquery.JqJsCmds.AppendHtml("worker_list", buildRow(worker))
@@ -32,8 +34,8 @@ class Worker extends Loggable {
 
 
 	def updateName(worker: PoolWorker, name: String) = {
-			logger.info("Worker %s - New Name: %s".format(worker.id, name))
-			worker.username(user.email + "_" + name).save
+			logger.info("Worker %s - New Name: %s".format(worker.id, stripName(name)))
+			worker.username(user.email + "_" + name.replaceAll("[^a-zA-Z0-9_-]+", "")).save
 			null
 	}
 
