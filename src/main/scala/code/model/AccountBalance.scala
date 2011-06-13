@@ -1,13 +1,14 @@
 package code
 package model
 
+import java.util.Date
+
 import net.liftweb.mapper._
 import net.liftweb.util._
 import net.liftweb.common._
 
 object AccountBalance extends AccountBalance with LongKeyedMetaMapper[AccountBalance] {
 	override def dbTableName = "account_balances"
-	override def fieldOrder = List(user, balance, sendAddress, paid, threshold)
 }
 
 class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
@@ -37,6 +38,11 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
 		override def defaultValue = 0
+	}
+
+	object timestamp extends MappedDateTime(this) {
+		override def dbNotNull_? = true
+		def beforeCreate = this(new Date)
 	}
 
 }

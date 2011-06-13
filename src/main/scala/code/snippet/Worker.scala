@@ -34,18 +34,17 @@ class Worker extends Loggable {
 
 	def buildWorkerTable(xhtml: NodeSeq) : NodeSeq = {
 		logger.info("count: %s".format(workers.length))
+		logger.info("email: %s".format(user.email))
 
-		val ret = workers.flatMap({ worker =>
-			bind("worker", chooseTemplate("workers", "entry", xhtml),
+		workers.flatMap({ worker =>
+			bind("worker", chooseTemplate("workers", "row", xhtml),
 				"user" -> Text("%s_".format(user.email)),
-				"name" -> SHtml.ajaxText(worker.name, updateName(worker, _), "style" -> "width: 250px;"),
+				"name" -> SHtml.ajaxText(worker.name, updateName(worker, _), "style" -> "width: 80px;"),
 				"hashrate" -> Text(worker.hashrate.toString),
 				"lasthash" -> Text(worker.lasthash.toString),
-				"password" -> SHtml.ajaxText(worker.password, updatePassword(worker, _))
+				"password" -> SHtml.ajaxText(worker.password, updatePassword(worker, _), "style" -> "width: 80px;")
 			)
 		})
-		logger.info("ret: %s".format(ret.toString))
-		ret
 	}
 
 	def list(xhtml: NodeSeq) : NodeSeq = {
@@ -58,6 +57,10 @@ class Worker extends Loggable {
 			logger.info("New Worker %s - Name: %s".format(worker.id, worker.name))
 			JsCmds.SetHtml("worker_list", entryTable)
 		}
+
+		logger.info("------------")
+		logger.info(entryTable)
+		logger.info("------------")
 
 		bind("workers", xhtml,
 			"table" -> entryTable,

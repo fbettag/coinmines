@@ -22,8 +22,9 @@
 		</span>
 
 		<div class="lift:Worker.list bio">
-			<label>New Worker Name</label><workers:newname/><br/><br/>
+			<label>New Worker Name</label><workers:newname></workers:newname><br/><br/>
 			<table>
+				<thead>
 				<tr>
 					<th>Worker Name</th>
 					<th>Hashrate</th>
@@ -31,18 +32,15 @@
 					<th>Password</th>
 					<th>Actions</th>
 				</tr>
-				<tbody id="worker_list">
-				<workers:table>
-					<workers:entry>
-					<tr>
-						<th><worker:user/><worker:name/></th>
-						<th><worker:hashrate/></th>
-						<th><worker:lasthash/></th>
-						<th><worker:password/></th>
-						<th><worker:delete/></th>
+				</thead>
+				<tbody id="worker_list" lift:bind="workers:table">
+					<tr lift:bind="workers:row">
+						<th><worker:user></worker:user><worker:name></worker:name></th>
+						<th><worker:hashrate></worker:hashrate></th>
+						<th><worker:lasthash></worker:lasthash></th>
+						<th><worker:password></worker:password></th>
+						<th><worker:delete></worker:delete></th>
 					</tr>
-					</workers:entry>
-				</workers:table>
 				</tbody>
 			</table>
 		</div>
@@ -54,8 +52,24 @@
 			<span class="role">List of your Transactions</span>
 		</span>
 
-		<table class="bio">
-		</table>
+		<div class="lift:Payment.list bio">
+			<table>
+				<thead>
+				<tr>
+					<th>Date</th>
+					<th>Wallet</th>
+					<th>Amount</th>
+				</tr>
+				</thead>
+				<tbody id="payment_list" lift:bind="payment:table">
+					<tr lift:bind="payment:row">
+						<th><balance:timestamp></balance:timestamp></th>
+						<th><balance:wallet></balance:wallet></th>
+						<th><balance:amount></balance:amount></th>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 	</div>
 </section>
 
