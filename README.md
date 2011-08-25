@@ -14,12 +14,12 @@ You need the following components installed:
 
 Update dependencies with sbt:
 
-<code>sbt update</code>
+<code>./sbt update</code>
 
 
 Update run jetty:
 
-<code>sbt ~jetty-run</code>
+<code>./sbt ~jetty-run</code>
 
 
 PostgreSQL Console:
