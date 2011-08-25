@@ -24,37 +24,40 @@ class ShareHistory extends LongKeyedMapper[ShareHistory] with IdPK {
 		override def defaultValue = true
 	}
 
-	object remoteHost extends MappedString(this, 255) {
-		override def dbNotNull_? = true
-	}
-
 	object blockNumber extends MappedInt(this) {
 		override def dbNotNull_? = true
 	}
 
+	object score extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 2)
+
+	object remoteHost extends MappedString(this, 255) {
+		override def dbColumnName = "rem_host"
+		override def dbNotNull_? = true
+	}
+
 	object ourResult extends MappedBoolean(this) {
+		override def dbColumnName = "our_result"
 		override def dbNotNull_? = true
 		override def defaultValue = false
 	}
 
 	object upstreamResult extends MappedBoolean(this) {
+		override def dbColumnName = "upstream_result"
 		//override def dbNotNull_? = true
 		//override def defaultValue = false
 	}
 
 	object reason extends MappedString(this, 255) {
-		override def dbNotNull_? = true
+//		override def dbNotNull_? = true
 	}
 
 	object solution extends MappedString(this, 1024) {
-		override def dbNotNull_? = true
+//		override def dbNotNull_? = true
 	}
 
 	object timestamp extends MappedDateTime(this) {
 		override def dbNotNull_? = true
-		def beforeCreate = this(new Date)
 	}
 
-	object score extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 2)
 
 }

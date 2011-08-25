@@ -31,11 +31,14 @@ class Boot {
 		LiftRules.addToPackages("code")
 
 		val redirectToHome = If(() => User.loggedIn_?, () => RedirectResponse("/"))
+		val redirectToLogin = If(() => User.loggedIn_?, () => RedirectResponse("/users/login"))
+		val redirectUnlessAdmin = If(() => User.isAdmin_?, () => RedirectResponse("/users/login"))
 
 		// Build SiteMap
 		def sitemap = SiteMap(
 			Menu.i("Home") / "index",
-			Menu.i("Account") / "account" >> redirectToHome >> User.AddUserMenusAfter,
+			Menu.i("Admin") / "admin" >> redirectUnlessAdmin,
+			Menu.i("Account") / "account" >> redirectToLogin >> User.AddUserMenusAfter,
 			Menu.i("Stats") / "stats",
 			Menu.i("Contact") / "contact"
 			//Menu.i("") / "",

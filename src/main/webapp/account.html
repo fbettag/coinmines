@@ -1,0 +1,107 @@
+<div id="main" class="lift:surround?with=smashing&at=contentbody">
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url lift:Account.balance">Balance</a></strong>
+			<span class="role">Your Balance</span>
+		</span>
+
+		<div class="bio">
+			<label>Wallet</label>
+			<span class="lift:Account.wallet"></span>
+
+			<br/><br/>
+
+			<label>Send coins</label>
+			<div>
+				<span class="lift:Account.sendcoins">
+				</span>
+				<span id="sent_coins" style="display:none">Your transaction should appear in your wallet <strong>shortly</strong>.</span>
+			</div>
+		</div>
+	</div>
+
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">Your Account</a></strong>
+			<span class="role">General informations</span>
+		</span>
+
+		<div class="lift:Account.details bio">
+			<label>E-Mail</label><account:email></account:email><br/><br/>
+			<label>Donation in %</label><account:donation></account:donation><br/><br/>
+			<label>Payout Lock</label><account:payoutlock></account:payoutlock><br/><br/>
+			<label>Idle Warning</label><account:idlewarning></account:idlewarning><br/><br/>
+		</div>
+	</div>
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">Your Workers</a></strong>
+			<span class="role">List of your Workers</span>
+		</span>
+
+		<div class="bio">
+			<br/>
+			<label>New Worker Name</label><span class="lift:Worker.add"></span><br/><br/>
+		</div>
+
+		<div class="lift:Worker.list bio" style="width:700px">
+		</div>
+	</div>
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">Your Payments</a></strong>
+			<span class="role">List of your Transactions</span>
+		</span>
+
+		<div class="lift:Payment.list bio">
+			<table>
+				<thead>
+				<tr>
+					<th>Date</th>
+					<th>Wallet</th>
+					<th>Amount</th>
+				</tr>
+				</thead>
+				<tbody id="payment_list" lift:bind="payment:table">
+					<tr lift:bind="payment:row">
+						<th><balance:timestamp></balance:timestamp></th>
+						<th><balance:wallet></balance:wallet></th>
+						<th><balance:amount></balance:amount></th>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</section>
+
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">How to use?</a></strong>
+			<span class="role">Windows examples</span>
+		</span>
+
+		<span class="bio">
+			<strong>poclbm.exe --host=coinmines.host --port=8332 --user=worker_name --pass=worker_pwd -d 1</strong><br/><br/>
+			<strong>phoenix.exe -u http://worker_name:worker_pwd@coinmines.host:8332/ -k poclbm DEVICE=1</strong><br/><br/>
+		</span>
+	</div>
+
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<span class="role">Linux examples</span>
+		</span>
+
+		<span class="bio">
+			<strong>./poclbm.py --host=coinmines.host --port=8332 --user=worker_name --pass=worker_pwd -d 1</strong><br/><br/>
+			<strong>./phoenix.py -u http://worker_name:worker_pwd@coinmines.host:8332/ -k poclbm DEVICE=1</strong><br/><br/>
+			<br/>
+		</span>
+	</div>
+</section>
+
+</div>

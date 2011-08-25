@@ -1,0 +1,4 @@
+# coinmines crontab
+
+
+* * * * *	/data/coinmines/cronjobs/cronjob.sh

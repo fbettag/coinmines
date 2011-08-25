@@ -6,8 +6,7 @@ import net.liftweb.util._
 import net.liftweb.common._
 
 object PoolWorker extends PoolWorker with LongKeyedMetaMapper[PoolWorker] {
-	override def dbTableName = "pool_workers"
-	override def fieldOrder = List(user, name, password, active, hashrate, lasthash)
+	override def dbTableName = "pool_worker"
 }
 
 class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK {
@@ -18,8 +17,7 @@ class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK {
 		override def dbNotNull_? = true
 	}
 
-	object name extends MappedString(this, 255) {
-		// only allow [a-zA-Z0-9_-]
+	object username extends MappedString(this, 255) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
 	}
@@ -27,11 +25,6 @@ class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK {
 	object password extends MappedString(this, 255) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
-	}
-
-	object active extends MappedBoolean(this) {
-		override def dbNotNull_? = true
-		override def defaultValue = false
 	}
 
 	object hashrate extends MappedInt(this)

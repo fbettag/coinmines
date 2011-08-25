@@ -15,7 +15,7 @@ class NetworkBlock extends LongKeyedMapper[NetworkBlock] with IdPK {
 
 	object accountAddress extends MappedString(this, 255) {
 		override def dbIndexed_? = true
-		override def dbNotNull_? = true
+//		override def dbNotNull_? = true
 	}
 
 	object blockNumber extends MappedInt(this) {
