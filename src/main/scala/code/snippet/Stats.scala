@@ -28,26 +28,64 @@
  */
 
 package code
-package model
+package snippet
 
-import net.liftweb.mapper._
+import java.util.Date
+import scala.xml._
+
+import net.liftweb._
+import net.liftweb.http._
+import net.liftweb.http.js._
+import net.liftweb.http.js.JE._
+import net.liftweb.http.js.JsCmds._
+import net.liftweb.http.SHtml._
 import net.liftweb.util._
+import net.liftweb.util.Helpers._
+import net.liftweb.mapper._
 import net.liftweb.common._
 
-object Setting extends Setting with LongKeyedMetaMapper[Setting] {
-	override def dbTableName = "settings"
-	override def fieldOrder = List(setting, value)
-}
+import model._
 
-class Setting extends LongKeyedMapper[Setting] with IdPK {
-	def getSingleton = Setting
+class Stats extends Loggable {
 
-	object setting extends MappedString(this, 255) {
-		override def dbIndexed_? = true
-		override def dbNotNull_? = true
+	/* helpers */
+	def hashrate(user: Box[User]) = {
+		var query = "SELECT SUM(hashrate) :: integer FROM pool_worker"
+	
+		user match {
+			case Full(a: User) => query += " WHERE user_c = %s".format(a.id)
+			case _ =>
+		}
+
+		try {
+			DB.runQuery(query)._2.head.head.toFloat
+		}
+		catch {
+			case _ => 0.0
+		}
 	}
 
-	object value extends MappedString(this, 255) {
-		override def dbIndexed_? = true
+	def poolworkers = PoolWorker.count(By_>(PoolWorker.hashrate, 0))
+	
+
+	/* snippets */
+	def hostname = "*" #> S.hostName
+
+	def global = {
+		".global_hashrate *" #> "%.1f GH/sec".format(hashrate(Empty) / 1000.0) &
+		".global_workers *" #> poolworkers.toString &
+		".global_payout *" #> "%.2f BTC".format(50.00)
+
 	}
+
+	def user = {
+		val user = User.currentUser.open_!
+		".user_hashrate *" #> "%s MH/sec".format(user.hashrate.toFloat) &
+		".user_shares_total *" #> user.shares_total.toString &
+		".user_shares_round *" #> user.shares_round.toString &
+		".user_shares_stale *" #> user.shares_stale.toString &
+		".user_shares_round_estimate *" #> user.shares_round_estimate.toString &
+		".user_payout *" #> "%.2f BTC".format(0.00)
+	}
+
 }

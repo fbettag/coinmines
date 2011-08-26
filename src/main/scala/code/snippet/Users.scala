@@ -27,27 +27,34 @@
  *
  */
 
-package code
-package model
+package code.snippet
 
-import net.liftweb.mapper._
+import net.liftweb.http._
+import net.liftweb.http.js._
+import net.liftweb.http.js.JE._
+import net.liftweb.http.js.JsCmds._
+import net.liftweb.http.SHtml._
 import net.liftweb.util._
+import net.liftweb.util.Helpers._
+import net.liftweb.mapper._
 import net.liftweb.common._
 
-object Setting extends Setting with LongKeyedMetaMapper[Setting] {
-	override def dbTableName = "settings"
-	override def fieldOrder = List(setting, value)
-}
+import scala.xml._
+import java.util.{Date, Calendar}
 
-class Setting extends LongKeyedMapper[Setting] with IdPK {
-	def getSingleton = Setting
+import code.model._
 
-	object setting extends MappedString(this, 255) {
-		override def dbIndexed_? = true
-		override def dbNotNull_? = true
-	}
 
-	object value extends MappedString(this, 255) {
-		override def dbIndexed_? = true
-	}
+class Users extends Loggable {
+
+	lazy val isAdmin_? = User.isAdmin_?
+	lazy val isUser_? = User.loggedIn_? || S.uri.equals("/%s/login".format(User.basePath.filter(s => s != null).mkString("/")))
+
+	/* snippets */
+	def isAdmin(xhtml: NodeSeq) = if (isAdmin_?) xhtml else NodeSeq.Empty
+	def isNotAdmin(xhtml: NodeSeq) = if (!isAdmin_?) xhtml else NodeSeq.Empty
+
+	def isLoggedIn(xhtml: NodeSeq) = if (isUser_?) xhtml else NodeSeq.Empty
+	def isNotLoggedIn(xhtml: NodeSeq) = if (!isUser_?) xhtml else NodeSeq.Empty
+
 }
