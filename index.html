@@ -56,71 +56,73 @@
 <h2>Install</h2>
 <p>Update dependencies with sbt:
 
-<code>
+<pre>
 ./sbt update
-</code>
+</pre>
 
 
 Update run jetty:
 
-<code>
+<pre>
 ./sbt ~jetty-run
-</code>
+</pre>
 
 
 PostgreSQL Console:
 
-<code>
+<pre>
 INSERT INTO settings (setting, value) VALUES
         ('current_workers', 0),
         ('current_hashrate', 0),
         ('current_users', 0),
         ('current_roundshares', 0),
         ('sitepercent', 2.0);
-</code>
+</pre>
 
 
 Start your bitcoin server in a screen/tmux session:
 
-<code>
+<pre>
 ./bitcoin-0.3.xx/bin/64/bitcoind -server
-</code>
+</pre>
 
 
 Get and compile pushpool: 
 
-<code>
+<pre>
 git clone https://github.com/MtRed/pushpool.git
 cd pushpool
 ./configure --prefix=/opt/pushpool
 make
 make install
-</code>
+</pre>
 
 
 In /opt/pushpool/server.json:
 
-<code>
-        "sharelog" : true,
-        "stmt.pwdb" : "SELECT password FROM pool_worker WHERE username = $1",
-        "stmt.sharelog" : "INSERT INTO shares (rem_host, username, our_result, upstream_result, reason, solution, timestamp_c) values ($1, $2, $3, $4, $5, decode($6, 'hex'), NOW())" 
-</code>
+<pre>
+"sharelog" : true,
+"stmt.pwdb" : "SELECT password FROM pool_worker WHERE username = $1",
+"stmt.sharelog" : "INSERT INTO shares (rem_host, username, our_result,
+			upstream_result, reason, solution, timestamp_c)
+			values ($1, $2, $3, $4, $5, decode($6, 'hex'), NOW())" 
+</pre>
 
 
 Start pushpools blkmond in a separate screen/tmux window:
 
-<code>
+<pre>
 /opt/pushpool/sbin/blkmond blkmon.cfg
-</code>
+</pre>
 
 
 Start pushpool itself (also in a new window):
 
-<code>
+<pre>
 /opt/pushpool/sbin/pushpoold --stderr -F
-</code></p>
+</pre></p>
 <h2>License</h2>
-<p><code>
+<p><pre>
   Copyright (c) 2011, Franz Bettag <franz@bett.ag>
   All rights reserved.
 
@@ -146,7 +148,7 @@ Start pushpool itself (also in a new window):
   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-</code></p>
+</pre></p>
 <h2>Authors</h2>
 <p>Franz Bettag (franz@bett.ag)<br/><br/>      </p>
 <h2>Contact</h2>
