@@ -64,4 +64,4 @@ tm.out
 *.tm.epoch
 multiverse.log
 
-src/main/resources/props/default.props
+src/main/resources/props/*.default.props
