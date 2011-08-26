@@ -46,12 +46,13 @@
       <span class="small">by <a href="http://github.com/fbettag">fbettag</a></span></h1>
 
     <div class="description">
-      pushpool Web-Frontend written in Scala (Lift Web Framework)
+      PoolServerJ and pushpool Web-Frontend written in Scala (Lift Web Framework)
     </div>
 
     <h2>Dependencies</h2>
 <p><a href="http://www.postgresql.org">PostgreSQL</a><br/>
 <a href="http://www.scala-lang.org">Scala</a><br/>
+<a href="http://poolserverj.org/">PoolServerJ</a> or<br/>
 <a href="https://github.com/MtRed/pushpool">pushpool from MtRed with PostgreSQL Support (and it's dependencies)</a></p>
 <h2>Install</h2>
 <p>Update dependencies with sbt:
@@ -87,7 +88,12 @@ Start your bitcoin server in a screen/tmux session:
 </pre>
 
 
-Get and compile pushpool: 
+To get started with PoolServerJ (preferred), try the <a href="http://poolserverj.org/quick-start/" target="_blank">Quick Start Tutorial</a> together with our config/local-daemon.properties.
+
+We also provide the two configuration files for pushpool in config/.
+
+
+To get started and compiling with pushpool: 
 
 <pre>
 git clone https://github.com/MtRed/pushpool.git
@@ -96,18 +102,6 @@ cd pushpool
 make
 make install
 </pre>
-
-
-In /opt/pushpool/server.json:
-
-<pre>
-"sharelog" : true,
-"stmt.pwdb" : "SELECT password FROM pool_worker WHERE username = $1",
-"stmt.sharelog" : "INSERT INTO shares (rem_host, username, our_result,
-			upstream_result, reason, solution, timestamp_c)
-			values ($1, $2, $3, $4, $5, decode($6, 'hex'), NOW())" 
-</pre>
-
 
 Start pushpools blkmond in a separate screen/tmux window:
 
@@ -150,7 +144,9 @@ Start pushpool itself (also in a new window):
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 </pre></p>
 <h2>Authors</h2>
-<p>Franz Bettag (franz@bett.ag)<br/><br/>      </p>
+<p>Franz Bettag (franz@bett.ag)
+<br/>
+<br/>      </p>
 <h2>Contact</h2>
 <p>Franz Bettag (franz@bett.ag)</p>
 
