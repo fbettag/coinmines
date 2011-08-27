@@ -49,30 +49,28 @@ import model._
 class Stats extends Loggable {
 
 	/* helpers */
-	def hashrate(user: Box[User]) = {
+	def hashrate = {
 		var query = "SELECT SUM(hashrate) :: integer FROM pool_worker"
 	
-		user match {
-			case Full(a: User) => query += " WHERE user_c = %s".format(a.id)
-			case _ =>
-		}
-
-		try {
-			DB.runQuery(query)._2.head.head.toFloat
-		}
-		catch {
-			case _ => 0.0
-		}
+		try { DB.runQuery(query)._2.head.head.toFloat }
+		catch { case _ => 0.0 }
 	}
 
-	def poolworkers = PoolWorker.count(By_>(PoolWorker.hashrate, 0))
+	def shares_round = {
+		var query = "SELECT SUM(shares_round) :: integer FROM shares"
+	
+		try { DB.runQuery(query)._2.head.head.toInt }
+		catch { case _ => 0 }
+	}
+
+	def poolworkers = try { PoolWorker.count(By_>(PoolWorker.hashrate, 0)) } catch { case _ => 0 }
 	
 
 	/* snippets */
 	def hostname = "*" #> S.hostName
 
 	def global = {
-		".global_hashrate *" #> "%.1f GH/sec".format(hashrate(Empty) / 1000.0) &
+		".global_hashrate *" #> "%.1f GH/sec".format(hashrate / 1000.0) &
 		".global_workers *" #> poolworkers.toString &
 		".global_payout *" #> "%.2f BTC".format(50.00)
 
@@ -85,6 +83,7 @@ class Stats extends Loggable {
 		".user_shares_round *" #> user.shares_round.toString &
 		".user_shares_stale *" #> user.shares_stale.toString &
 		".user_shares_round_estimate *" #> user.shares_round_estimate.toString &
+		".user_payout_round *" #> "%.8f BTC".format((50.00 / shares_round) * user.shares_round) &
 		".user_payout *" #> "%.2f BTC".format(0.00)
 	}
 

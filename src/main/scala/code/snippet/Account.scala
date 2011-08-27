@@ -86,7 +86,7 @@ class Account extends Loggable {
 
 
 	/* snippets */
-	def balance = <span id="account_balance">{"%.8f BTC".format(user.balance)}</span>
+	def balance = <span id="account_balance">{"%.8f BTC".format(user.balance.is.toFloat)}</span>
 
   def details(xhtml: NodeSeq) : NodeSeq = {
 		bind("account", xhtml,
@@ -102,7 +102,7 @@ class Account extends Loggable {
 	}
 
   def sendcoins(xhtml: NodeSeq) : NodeSeq = {
-		SHtml.ajaxText("%.2f".format(user.balance), sendcoinsToAccount(_), "style" -> "width:40px;", "id" -> "sendcoin_amount")
+		SHtml.ajaxText("%.2f".format(user.balance.is), sendcoinsToAccount(_), "style" -> "width:40px;", "id" -> "sendcoin_amount")
 	}
 
 }

@@ -119,7 +119,11 @@ class User extends MegaProtoUser[User] {
 		override def defaultValue = 0
 	}
 
-	def balance = 40.02
+	object balance extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0
+	}
+	
 	def balances: List[AccountBalance] = AccountBalance.findAll(By(AccountBalance.user, this.id))
 	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
 	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
