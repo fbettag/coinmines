@@ -39,7 +39,7 @@ import net.liftweb.sitemap.{Menu}
 
 object User extends User with MetaMegaProtoUser[User] {
 	override def dbTableName = "users" // define the DB table name
-	override def fieldOrder = List(id, email, locale, timezone, password, hashrate, shares_total, shares_round, shares_stale, shares_round_estimate, donatePercent, locked)
+	override def fieldOrder = List(id, email, locale, timezone, password, donatePercent, locked)
 	override def signupFields = List(email, locale, timezone, password)
 
 	override val basePath: List[String] = "users" :: Nil
@@ -100,9 +100,16 @@ class User extends MegaProtoUser[User] {
 	object hashrate extends MappedInt(this)
 	
 	object shares_total extends MappedInt(this)
-	object shares_round extends MappedInt(this)
 	object shares_stale extends MappedInt(this)
-	object shares_round_estimate extends MappedInt(this)
+
+	object shares_total_btc extends MappedInt(this)
+	object shares_stale_btc extends MappedInt(this)
+
+	object shares_total_nmc extends MappedInt(this)
+	object shares_stale_nmc extends MappedInt(this)
+
+	object shares_total_slc extends MappedInt(this)
+	object shares_stale_slc extends MappedInt(this)
 
 	object payoutlock extends MappedBoolean(this) {
 		override def dbNotNull_? = true
@@ -127,5 +134,4 @@ class User extends MegaProtoUser[User] {
 	def balances: List[AccountBalance] = AccountBalance.findAll(By(AccountBalance.user, this.id))
 	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
 	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
-	def shareHistory: List[ShareHistory] = ShareHistory.findAll(By(ShareHistory.user, this.id))
 }

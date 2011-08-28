@@ -80,10 +80,10 @@ class Stats extends Loggable {
 		val user = User.currentUser.open_!
 		".user_hashrate *" #> "%s MH/sec".format(user.hashrate.toFloat) &
 		".user_shares_total *" #> user.shares_total.toString &
-		".user_shares_round *" #> user.shares_round.toString &
+		//".user_shares_round *" #> user.shares_round.toString &
 		".user_shares_stale *" #> user.shares_stale.toString &
-		".user_shares_round_estimate *" #> user.shares_round_estimate.toString &
-		".user_payout_round *" #> "%.8f BTC".format((50.00 / shares_round) * user.shares_round) &
+		//".user_shares_round_estimate *" #> user.shares_round_estimate.toString &
+		//".user_payout_round *" #> "%.8f BTC".format((50.00 / shares_round) * user.shares_round) &
 		".user_payout *" #> "%.2f BTC".format(0.00)
 	}
 

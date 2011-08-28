@@ -36,7 +36,7 @@ import net.liftweb.common._
 
 object NetworkBlock extends NetworkBlock with LongKeyedMetaMapper[NetworkBlock] {
 	override def dbTableName = "network_blocks"
-	override def fieldOrder = List(blockNumber, timestamp, accountAddress, confirms)
+	override def fieldOrder = List(blockNumber, timestamp, accountAddress, confirms, network)
 }
 
 class NetworkBlock extends LongKeyedMapper[NetworkBlock] with IdPK {
@@ -59,5 +59,11 @@ class NetworkBlock extends LongKeyedMapper[NetworkBlock] with IdPK {
 	object timestamp extends MappedDateTime(this) with LifecycleCallbacks {
 		override def dbNotNull_? = true
 	}
+
+	object network extends MappedString(this, 20) {
+		override def dbNotNull_? = true
+		override def dbIndexed_? = true
+	}
+
 
 }

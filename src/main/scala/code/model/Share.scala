@@ -80,5 +80,10 @@ class Share extends LongKeyedMapper[Share] with IdPK {
 //		override def dbNotNull_? = true
 	}
 
+	object network extends MappedString(this, 20) {
+		override def dbNotNull_? = true
+		override def dbIndexed_? = true
+	}
+
 
 }

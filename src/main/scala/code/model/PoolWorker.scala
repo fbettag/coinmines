@@ -57,6 +57,10 @@ class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK {
 	}
 
 	object hashrate extends MappedInt(this)
+	object hashrate_btc extends MappedInt(this)
+	object hashrate_nmc extends MappedInt(this)
+	object hashrate_slc extends MappedInt(this)
+
 	object lasthash extends MappedDateTime(this)
 
 	def lasthashString = {
