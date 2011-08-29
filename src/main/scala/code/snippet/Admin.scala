@@ -28,20 +28,43 @@
  */
 
 package code
-package model
+package snippet
 
-import net.liftweb.mapper._
-import net.liftweb.util._
-import net.liftweb.common._
 import java.util.Date
+import scala.xml._
 
-import redis.clients.jedis._
+import net.liftweb._
+import net.liftweb.http._
+import net.liftweb.http.js._
+import net.liftweb.http.js.JE._
+import net.liftweb.http.js.JsCmds._
+import net.liftweb.http.SHtml._
+import net.liftweb.util._
+import net.liftweb.util.Helpers._
+import net.liftweb.mapper._
+import net.liftweb.common._
 
-object Redis {
-	val r = new Jedis("localhost")
+import model._
+import lib._
 
-	def get(a: String) = r.get(a)
+class Admin extends Loggable {
 
-	def set(a: String, b: String) = r.set(a, b)
+	/* helpers */
+	
+	/* snippets */
+	def bitcoins =
+		".bitcoin_balance *" #> "%.8f BTC".format(try { Coind.run(BtcCmd("getbalance")).toFloat } catch { case _ => 0.0 }) &
+		".bitcoin_info" #> <pre>{Coind.run(BtcCmd("getinfo"))}</pre> &
+		".bitcoin_transactions" #> <pre>{Coind.run(BtcCmd("listtransactions"))}</pre>
+
+	def namecoins =
+		".namecoin_balance *" #> "%.8f NMC".format(try { Coind.run(NmcCmd("getbalance")).toFloat } catch { case _ => 0.0 }) &
+		".namecoin_info" #> <pre>{Coind.run(NmcCmd("getinfo"))}</pre> &
+		".namecoin_transactions" #> <pre>{Coind.run(NmcCmd("listtransactions"))}</pre>
+
+	def solidcoins =
+		".solidcoin_balance *" #> "%.8f SLC".format(try { Coind.run(SlcCmd("getbalance")).toFloat } catch { case _ => 0.0 }) &
+		".solidcoin_info" #> <pre>{Coind.run(SlcCmd("getinfo"))}</pre> &
+		".solidcoin_transactions" #> <pre>{Coind.run(SlcCmd("listtransactions"))}</pre>
+
 }
-

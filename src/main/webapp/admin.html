@@ -1,0 +1,66 @@
+<div id="main" class="lift:surround?with=smashing&at=contentbody">
+<section class="body">
+	<div id="about" class="vcard body lift:Admin.bitcoins">
+		<span class="primary">
+			<strong><a href="" class="fn url bitcoin_balance">0.00000000 BTC</a></strong>
+			<span class="role">Bitcoins</span>
+		</span>
+
+		<div class="bio">
+			<label>Info</label><br/>
+			<pre class="bitcoin_info"></pre><br/><br/>
+		</div>
+
+		<div class="bio">
+			<button onclick="javascript: $(this).fadeOut(); $('#bittrans').show('blind', {}, 500);">Show transactions</button>
+			<span style="display:none" id="bittrans">
+				<label>Transactions</label><br/>
+				<pre class="bitcoin_transactions"></pre><br/><br/>
+			</span>
+		</div>
+	</div>
+</section>
+<section class="body">
+	<div id="about" class="vcard body lift:Admin.namecoins">
+		<span class="primary">
+			<strong><a href="" class="fn url namecoin_balance">0.00000000 NMC</a></strong>
+			<span class="role">Namecoins</span>
+		</span>
+
+		<div class="bio">
+			<label>Info</label><br/>
+			<pre class="namecoin_info"></pre><br/><br/>
+		</div>
+
+		<div class="bio">
+			<button onclick="javascript: $(this).fadeOut(); $('#nametrans').show('blind', {}, 500);">Show transactions</button>
+			<span style="display:none" id="nametrans">
+				<label>Transactions</label><br/>
+				<pre class="namecoin_transactions"></pre><br/><br/>
+			</span>
+		</div>
+	</div>
+</section>
+<section class="body">
+	<div id="about" class="vcard body lift:Admin.solidcoins">
+		<span class="primary">
+			<strong><a href="" class="fn url solidcoin_balance">0.00000000 SLC</a></strong>
+			<span class="role">Solidcoins</span>
+		</span>
+
+		<div class="bio">
+			<label>Info</label><br/>
+			<pre class="solidcoin_info"></pre><br/><br/>
+		</div>
+
+		<div class="bio">
+			<button onclick="javascript: $(this).fadeOut(); $('#solidtrans').show('blind', {}, 500);">Show transactions</button>
+			<span style="display:none" id="solidtrans">
+				<label>Transactions</label><br/>
+				<pre class="solidcoin_transactions"></pre><br/><br/>
+			</span>
+		</div>
+	</div>
+</section>
+
+</div>

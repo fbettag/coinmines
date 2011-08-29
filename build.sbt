@@ -22,8 +22,6 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
 	"com.twitter" % "json" % "2.1.4",
-	"redis.clients" % "jedis" % "2.0.0",
-	"net.databinder" %% "dispatch-http" % "0.8.5",
 	"ag.bett.scala" % "scala-libs" % "1.0",
 	"com.github.scala-incubator.io" %% "core" % "0.1.2",
 	"com.github.scala-incubator.io" %% "file" % "0.1.2",
