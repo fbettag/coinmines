@@ -34,11 +34,13 @@ import net.liftweb.mapper._
 import net.liftweb.util._
 import net.liftweb.common._
 
+import lib._
+
 object PoolWorker extends PoolWorker with LongKeyedMetaMapper[PoolWorker] {
 	override def dbTableName = "pool_worker"
 }
 
-class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK {
+class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK with JsEffects[PoolWorker] {
 	def getSingleton = PoolWorker
 
 	object user extends MappedLongForeignKey(this, User) {

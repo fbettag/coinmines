@@ -36,6 +36,7 @@ import net.liftweb.common._
 import net.liftweb.http.{S,SessionVar}
 import net.liftweb.sitemap.{Menu}
 
+import lib._
 
 object User extends User with MetaMegaProtoUser[User] {
 	override def dbTableName = "users" // define the DB table name
@@ -86,7 +87,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	}
 }
 
-class User extends MegaProtoUser[User] {
+class User extends MegaProtoUser[User] with JsEffects[User] {
 	def getSingleton = User
 
 	object locked extends MappedBoolean(this) {
@@ -95,10 +96,10 @@ class User extends MegaProtoUser[User] {
 		override def defaultValue = false
 	}
 
-	object wallet extends MappedString(this, 255)
+	object wallet_btc extends MappedString(this, 255)
+	object wallet_nmc extends MappedString(this, 255)
+	object wallet_slc extends MappedString(this, 255)
 
-	object hashrate extends MappedInt(this)
-	
 	object shares_total extends MappedInt(this)
 	object shares_stale extends MappedInt(this)
 
@@ -126,7 +127,18 @@ class User extends MegaProtoUser[User] {
 		override def defaultValue = 0
 	}
 
-	object balance extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
+	object balance_btc extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0
+	}
+	
+	object balance_nmc extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0
+	}
+	
+
+	object balance_slc extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
 		override def dbNotNull_? = true
 		override def defaultValue = 0
 	}
@@ -134,4 +146,10 @@ class User extends MegaProtoUser[User] {
 	def balances: List[AccountBalance] = AccountBalance.findAll(By(AccountBalance.user, this.id))
 	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
 	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
+
+	def hashrate: Float = Redis.get("hashrate::%s".format(this.id)) match {
+		case null => 0
+		case a: String => try { a.toFloat } catch { case _ => 0 }
+	}
+
 }

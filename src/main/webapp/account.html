@@ -1,23 +1,34 @@
 <div id="main" class="lift:surround?with=smashing&at=contentbody">
 <section class="body">
 	<div id="about" class="vcard body">
-		<span class="primary">
-			<strong><a href="" class="fn url lift:Account.balance">Balance</a></strong>
-			<span class="role">Your Balance</span>
+		<span class="primary lift:Account.balance">
+			<strong><a href="" class="fn url user_balance_btc">0.00000000 BTC</a></strong>
+			<strong><a href="" class="fn url user_balance_nmc">0.00000000 NMC</a></strong>
+			<strong><a href="" class="fn url user_balance_slc">0.00000000 SLC</a></strong>
+			<span class="role">Your Balances</span>
 		</span>
 
 		<div class="bio">
-			<label>Wallet</label>
-			<span class="lift:Account.wallet"></span>
+			<span class="lift:Account.wallet">
+				<label>BTC Wallet</label>
+				<input type="text" style="width:250px" class="user_wallet_btc"/>
+				<input type="button" class="user_wallet_btc_btn" value="save"/>
+				<label>NMC Wallet</label>
+				<input type="text" style="width:250px" class="user_wallet_nmc"/>
+				<input type="button" class="user_wallet_nmc_btn" value="save"/>
+				<label>SLC Wallet</label>
+				<input type="text" style="width:250px" class="user_wallet_slc"/>
+				<input type="button" class="user_wallet_slc_btn" value="save"/>
+			</span>
 
 			<br/><br/>
 
-			<label>Send coins</label>
+<!--			<label>Send coins</label>
 			<div>
 				<span class="lift:Account.sendcoins">
 				</span>
 				<span id="sent_coins" style="display:none">Your transaction should appear in your wallet <strong>shortly</strong>.</span>
-			</div>
+			</div>-->
 		</div>
 	</div>
 
@@ -29,10 +40,12 @@
 		</span>
 
 		<div class="lift:Account.details bio">
-			<label>E-Mail</label><account:email></account:email><br/><br/>
-			<label>Donation in %</label><account:donation></account:donation><br/><br/>
-			<label>Payout Lock</label><account:payoutlock></account:payoutlock><br/><br/>
-			<label>Idle Warning</label><account:idlewarning></account:idlewarning><br/><br/>
+				<label>E-Mail</label>
+				<input type="text" style="width:150px" class="user_details_email"/>
+				<input type="button" class="user_details_email_btn" value="save"/><br/><br/>
+				<label>Donation in %</label>
+				<input type="text" style="width:50px" class="user_details_donation"/>
+				<input type="button" class="user_details_donation_btn" value="save"/>
 		</div>
 	</div>
 
@@ -44,7 +57,7 @@
 
 		<div class="bio">
 			<br/>
-			<label>New Worker Name</label><span class="lift:Worker.add"></span><br/><br/>
+			<label>New Worker Name</label><input type="text" value="new_worker" id="new_worker"/><input class="lift:Worker.add"/><br/><br/>
 		</div>
 
 		<div class="lift:Worker.list bio" style="width:700px">
@@ -91,25 +104,63 @@
 	<div id="about" class="vcard body">
 		<span class="primary">
 			<strong><a href="" class="fn url">How to use?</a></strong>
-			<span class="role">Windows examples</span>
+			<span class="role">Configuration Parameters</span>
 		</span>
 
-		<span class="bio">
-			<strong>poclbm.exe --host=<span class="lift:Stats.hostname"></span> --port=8337 --user=worker_name --pass=worker_pwd -d 1</strong><br/><br/>
-			<strong>phoenix.exe -u http://worker_name:worker_pwd@<span class="lift:Stats.hostname"></span>:8337/ -k poclbm DEVICE=1</strong><br/><br/>
-		</span>
+
+		<div class="bio">
+                	<strong>Hostname is <span class="lift:Stats.hostname"></span><br/><br/>
+			<strong>Port 8337 is for Bitcoins</strong><br/><br/>
+			<strong>Port 8447 is for Namecoins</strong><br/><br/>
+			<strong>Port 8557 is for Solidcoins</strong><br/><br/>
+		</div>
 	</div>
+</section>
 
+<section class="body">
 	<div id="about" class="vcard body">
 		<span class="primary">
-			<span class="role">Linux examples</span>
+			<strong><a href="" class="fn url">cgminer</a></strong>
+			<span class="role"></span>
 		</span>
 
-		<span class="bio">
-			<strong>./poclbm.py --host=<span class="lift:Stats.hostname"></span> --port=8337 --user=worker_name --pass=worker_pwd -d 1</strong><br/><br/>
-			<strong>./phoenix.py -u http://worker_name:worker_pwd@<span class="lift:Stats.hostname"></span>:8337/ -k poclbm DEVICE=1</strong><br/><br/>
-			<br/>
+               	-o http://<span class="lift:Stats.hostname"></span>:PORT -u worker -p pass -I 7 -k phatk
+	</div>
+</section>
+
+
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">poclbm</a></strong>
+			<span class="role"></span>
 		</span>
+
+                --host=<span class="lift:Stats.hostname"></span> --port=PORT --user=worker --pass=pass -d 0
+	</div>
+</section>
+
+
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">phoenix</a></strong>
+			<span class="role"></span>
+		</span>
+
+                -u http://worker:pass@<span class="lift:Stats.hostname"></span>:PORT -k phatk platform=0 device=0 vectors bfi_int
+	</div>
+</section>
+
+
+<section class="body">
+	<div id="about" class="vcard body">
+		<span class="primary">
+			<strong><a href="" class="fn url">UFAsoft</a></strong>
+			<span class="role"></span>
+		</span>
+
+               	-t 4 -g yes -u worker -p pass -o http://<span class="lift:Stats.hostname"></span>:PORT
 	</div>
 </section>
 
