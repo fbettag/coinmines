@@ -147,9 +147,11 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
 	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
 
-	def hashrate: Float = Redis.get("hashrate::%s".format(this.id)) match {
+	def hashrate = 0.0
+	/*
+	Float = Redis.get("hashrate::%s".format(this.id)) match {
 		case null => 0
 		case a: String => try { a.toFloat } catch { case _ => 0 }
-	}
+	}*/
 
 }
