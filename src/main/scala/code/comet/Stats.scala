@@ -239,7 +239,10 @@ class StatComet extends CometActor {
 			ActorPing.schedule(this, Tick, 30 seconds) 
 	}
 
-	def render = <span id="thestats"/>
+	def render = {
+		this ! Tick
+		<span id="thestats"/>
+	}
 
 	def hashrate = 0
 	def cssSel(r: StatsUserReply): CssSel =
