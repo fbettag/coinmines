@@ -52,6 +52,7 @@ import model._
 case object Tick
 
 sealed trait StatsGatherCommand
+case class StatsCleanup extends StatsGatherCommand
 case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
 case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
@@ -79,12 +80,16 @@ object StatCollector extends LiftActor {
 
 	// later, schedule itself for recalculation
 	ActorPing.schedule(this, Tick, 1 minute)
+	ActorPing.schedule(this, StatsCleanup, 10 minute)
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
 			a.target ! getGlobal
 		case a: StatsGatherUser =>
 			a.target ! getUser(a.user)
+		case StatsCleanup =>
+			cleanupJob
+			ActorPing.schedule(this, StatsCleanup, 10 minute)
 		case Tick =>
 			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
@@ -97,6 +102,10 @@ object StatCollector extends LiftActor {
 
 	private var globalReply = StatsGlobalReply(invalidDate, 0, 0, 0, 0, 0.0, 0, 0, 0.0, 0, 0, 0.0)
 	private var userReplies: Map[String, StatsUserReply] = Map()
+
+	private def cleanupJob {
+		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
+	}
 
 	private def minuteJob {
 		try {
