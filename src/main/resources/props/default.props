@@ -2,3 +2,7 @@ db.driver=org.postgresql.Driver
 db.url=jdbc:postgresql:pushpool
 db.user=pushpool
 db.password=
+
+pool.fee=2.0
+pool.calculate=false
+

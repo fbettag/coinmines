@@ -48,7 +48,12 @@ import model._
 
 class Stats extends Loggable {
 
+	def poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
+
 	/* snippets */
 	def hostname = "*" #> S.hostName
+
+	def feeFactor = "*" #> "%.2f".format(1.0 - (poolfee/100.0))
+	def feePercent = "*" #> "%.2f".format(poolfee)
 
 }
