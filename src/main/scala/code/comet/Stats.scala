@@ -142,21 +142,38 @@ object StatCollector extends LiftActor {
 
 	/* reload needed data */
 	private def getUser(user: User): StatsUserReply = {
+		def rawQuery(network: String, andWhere: String) = try {
+			DB.runQuery("SELECT COUNT(id) FROM shares WHERE network = '%s' AND username LIKE '%s_%%' %s".format(network, user.email.is, andWhere))._2.first.first.toInt
+		} catch { case _ => 0 }
+		
+		def shareQuery(network: String) = rawQuery(network, "")
+		def staleQuery(network: String) = rawQuery(network, "AND our_result = false")
+
 		userReplies.get(user.email) match {
 			case Some(a: StatsUserReply) if (a.lastUpdate.isAfter(invalidDate)) => a
-			case _ =>
+			case _ => {
+				val btcShares = shareQuery("bitcoin")
+				val nmcShares = shareQuery("namecoin")
+				val slcShares = shareQuery("solidcoin")
+
+				val btcStales = staleQuery("bitcoin")
+				val nmcStales = staleQuery("namecoin")
+				val slcStales = staleQuery("solidcoin")
+
 				val repl: StatsUserReply = new StatsUserReply(user, currentDate,
-					user.workers.foldLeft(0) { _ + _.hashrate }, // hashrate
-					0, 0,
-					user.workers.foldLeft(0) { _ + _.hashrate_btc }, // hashrate BTC
-					0, 0, 0,
-					user.workers.foldLeft(0) { _ + _.hashrate_nmc }, // hashrate NMC
-					0, 0, 0,
-					user.workers.foldLeft(0) { _ + _.hashrate_slc }, // hashrate SLC
-					0, 0, 0,
+					user.workers.foldLeft(0) { _ + _.hashrate },
+					user.shares_total + btcShares + nmcShares + slcShares,
+					user.shares_stale + btcStales + nmcStales + slcStales,
+					user.workers.foldLeft(0) { _ + _.hashrate_btc },
+					user.shares_total_btc + btcShares, btcShares, user.shares_stale_btc + btcStales,
+					user.workers.foldLeft(0) { _ + _.hashrate_nmc },
+					user.shares_total_nmc + nmcShares, nmcShares, user.shares_stale_nmc + nmcStales,
+					user.workers.foldLeft(0) { _ + _.hashrate_slc },
+					user.shares_total_slc + slcShares, slcShares, user.shares_stale_slc + slcStales,
 					getGlobal)
 				userReplies += (user.email.is -> repl)
 				repl
+			}
 		}
 	}
 
@@ -215,11 +232,11 @@ class StatComet extends CometActor {
 
 		case a: StatsGlobalReply =>
 			partialUpdate(SetHtml("thestats", cssSel(a).apply(defaultHtml)))
-			ActorPing.schedule(this, Tick, 15 seconds) 
+			ActorPing.schedule(this, Tick, 100 seconds) 
 
 		case a: StatsUserReply =>
 			partialUpdate(SetHtml("thestats", cssSel(a).apply(defaultHtml)))
-			ActorPing.schedule(this, Tick, 15 seconds) 
+			ActorPing.schedule(this, Tick, 30 seconds) 
 	}
 
 	def render = <span id="thestats"/>
