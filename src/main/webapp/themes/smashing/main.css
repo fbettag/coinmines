@@ -298,7 +298,7 @@ img.left, figure.left {float: right; margin: 0 0 2em 2em;}
 /*
 	About
 *****************/
-#about {
+.about, #about {
 	background: #fff;
 	font-style: normal;
 	margin-bottom: 2em;
@@ -312,14 +312,14 @@ img.left, figure.left {float: right; margin: 0 0 2em 2em;}
 	-webkit-border-radius: 10px;
 }
 
-#about .primary {float: left; width: 165px;}
-#about .primary strong {color: #C64350; display: block; font-size: 1.286em;}
-#about .photo {float: left; margin: 5px 20px;}
+.about .primary, #about .primary {float: left; width: 165px;}
+.about .primary, #about .primary strong {color: #C64350; display: block; font-size: 1.286em;}
+.about .photo, #about .photo {float: left; margin: 5px 20px;}
 
-#about .url:link, #about .url:visited {text-decoration: none;}
+.about .url:link, .about .url:visited, #about .url:link, #about .url:visited {text-decoration: none;}
 
-#about .bio {float: right; width: 500px;}
-#about label {min-width:100px; float:left; text-align:right; padding-right:25px;}
+.about .bio, #about .bio {float: right; width: 500px;}
+.about .label, #about label {min-width:100px; float:left; text-align:right; padding-right:25px;}
 
 /*
 	Footer

@@ -86,7 +86,6 @@ class Worker extends Loggable {
 	def buildRow(worker: PoolWorker) = <xml:group>
 		<tr id={"row_%s".format(worker.id)}>
 			<td>{user.email}_{SHtml.ajaxText(worker.username.replaceFirst("^%s_".format(user.email), ""), updateName(worker, _))}</td>
-			<td>{"%s MH/sec".format(worker.hashrate)}</td>
 			<td>{worker.lasthashString}</td>
 			<td>{SHtml.ajaxText(worker.password, updatePassword(worker, _), "class" -> "worker_password", "type" -> "password")}</td>
 			<td>{a(() => deleteWorker(worker), <span>{S.??("delete")}</span>)}</td>
@@ -98,7 +97,6 @@ class Worker extends Loggable {
 			<thead>
 				<tr>
 					<th>{S.??("Worker Name")}</th>
-					<th>{S.??("Hashrate")}</th>
 					<th>{S.??("Last Hash")}</th>
 					<th>{S.??("Password")}</th>
 					<th></th>

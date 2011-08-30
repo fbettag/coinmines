@@ -1,15 +1,17 @@
 <div id="main" class="lift:surround?with=smashing&at=contentbody">
-<span lift="comet?type=StatServer;network=user">
+<span id="thestats" lift="comet?type=StatComet">
 <span lift="Users.isLoggedIn">
 	<section class="body">
-		<div id="about" class="vcard body">
+		<div class="about vcard body">
 
 			<span class="primary">
-				<strong><a href="" class="fn url">Your Statistics</a></strong>
+				<strong><a href="" class="fn url">Your Statistics</a></strong><br/>
+				<span class="role last_updated">Last update</span>
 			</span>
 
 			<div class="bio">
-				<table>
+				<table style="width:100%" id="bitinfo">
+					<col/><col width="200"/>
 					<tr>
 						<th>Hashrate</th>
 						<td class="user_hashrate"></td>
@@ -27,112 +29,151 @@
 			</div>
 		</div>
 
-		<div id="about" class="vcard body">
+		<div class="about vcard body" id="workerlist">
 			<span class="primary">
-				<strong><a href="" class="fn url">Your Bitcoin Stats</a></strong>
+				<strong><a href="" class="fn url">Your Workers</a></strong>
 			</span>
 
 			<div class="bio">
-				<table>
+				<table style="width:100%">
+					<tr>
+						<th>Worker</th>
+						<th>MH/sec</th>
+						<!--
+						<th>HR BTC</th>
+						<th>HR NMC</th>
+						<th>HR SLC</th>
+						-->
+						<th>Last hash</th>
+					</tr>
+					<tr class="miner_row">
+						<th class="miner_name">name</td>
+						<td class="miner_hashrate"></td>
+						<!--
+						<td class="miner_hashrate_btc">0 MH/s</td>
+						<td class="miner_hashrate_nmc">0 MH/s</td>
+						<td class="miner_hashrate_slc">0 MH/s</td>
+						-->
+						<td class="miner_lasthash"></td>
+					</tr>
+				</table>
+			</div>
+		</div>
+
+		<div class="about vcard body">
+			<span class="primary">
+				<strong><a href="" class="fn url">Bitcoin Stats</a></strong>
+                        	<strong><a href="" class="fn url user_balance_btc">0.00000000 BTC</a></strong>
+			</span>
+
+			<div class="bio">
+				<table style="width:100%">
+					<col/><col width="200"/>
 					<tr>
 						<th>Hashrate</th>
 						<td class="user_btc_hashrate"></td>
 					</tr>
-					<tr>
+					<tr class="bitbody" style="display:none">
 						<th>Shares Total</th>
 						<td class="user_btc_shares_total"></td>
 					</tr>
-					<tr>
+					<tr class="bitbody" style="display:none">
 						<th>Shares this Round</th>
 						<td class="user_btc_shares_round"></td>
 					</tr>
-					<tr>
+					<tr class="bitbody" style="display:none">
 						<th>Stale Shares</th>
 						<td class="user_btc_shares_stale"></td>
 					</tr>
-					<tr>
+					<tr class="bitbody" style="display:none">
 						<th>Payed out to date</th>
 						<td class="user_btc_payout"></td>
 					</tr>
-
 				</table>
+				<button onclick="javascript: $(this).hide(); $('.bitbody').fadeIn();">Show more</button>
 			</div>
 		</div>
 
-		<div id="about" class="vcard body">
+		<div class="about vcard body">
 			<span class="primary">
-				<strong><a href="" class="fn url">Your Namecoin Stats</a></strong>
+				<strong><a href="" class="fn url">Namecoin Stats</a></strong>
+                        	<strong><a href="" class="fn url user_balance_nmc">0.00000000 NMC</a></strong>
 			</span>
-
+			
 			<div class="bio">
-				<table>
+				<table style="width:100%">
+					<col/><col width="200"/>
 					<tr>
 						<th>Hashrate</th>
 						<td class="user_nmc_hashrate"></td>
 					</tr>
-					<tr>
+					<tr class="nmcbody" style="display:none">
 						<th>Shares Total</th>
 						<td class="user_nmc_shares_total"></td>
 					</tr>
-					<tr>
+					<tr class="nmcbody" style="display:none">
 						<th>Shares this Round</th>
 						<td class="user_nmc_shares_round"></td>
 					</tr>
-					<tr>
+					<tr class="nmcbody" style="display:none">
 						<th>Stale Shares</th>
 						<td class="user_nmc_shares_stale"></td>
 					</tr>
-					<tr>
+					<tr class="nmcbody" style="display:none">
 						<th>Payed out to date</th>
 						<td class="user_nmc_payout"></td>
 					</tr>
-
 				</table>
+				<button onclick="javascript: $(this).hide(); $('.nmcbody').fadeIn();">Show more</button>
 			</div>
 		</div>
 
-		<div id="about" class="vcard body">
+		<div class="about vcard body">
 			<span class="primary">
-				<strong><a href="" class="fn url">Your Solidcoin Stats</a></strong>
+				<strong><a href="" class="fn url">Solidcoin Stats</a></strong>
+                        	<strong><a href="" class="fn url user_balance_slc">0.00000000 SLC</a></strong>
 			</span>
 
 			<div class="bio">
-				<table>
+				<table style="width:100%">
+					<col/><col width="200"/>
 					<tr>
 						<th>Hashrate</th>
 						<td class="user_slc_hashrate"></td>
 					</tr>
-					<tr>
+					<tr class="slcbody" style="display:none">
 						<th>Shares Total</th>
 						<td class="user_slc_shares_total"></td>
 					</tr>
-					<tr>
+					<tr class="slcbody" style="display:none">
 						<th>Shares this Round</th>
 						<td class="user_slc_shares_round"></td>
 					</tr>
-					<tr>
+					<tr class="slcbody" style="display:none">
 						<th>Stale Shares</th>
 						<td class="user_slc_shares_stale"></td>
 					</tr>
-					<tr>
+					<tr class="slcbody" style="display:none">
 						<th>Payed out to date</th>
 						<td class="user_slc_payout"></td>
 					</tr>
-
 				</table>
+				<button onclick="javascript: $(this).hide(); $('.slcbody').fadeIn();">Show more</button>
 			</div>
 		</div>
 	</section>
 </span>
 <section class="body">
 
-	<div id="about" class="vcard body">
+	<div class="about vcard body">
 		<span class="primary">
-			<strong><a href="" class="fn url">Global Statistics</a></strong>
+			<strong><a href="" class="fn url">Global Statistics</a></strong><br/>
+			<span class="role last_updated">Last update</span>
 		</span>
 
 		<div class="bio">
-			<table>
+			<table style="width:100%">
+				<col/><col width="200"/>
 				<tr>
 					<th>Hashrate</th>
 					<td class="global_hashrate"></td>
@@ -145,20 +186,21 @@
 		</div>
 	</div>
 
-	<div id="about" class="vcard body">
+	<div class="about vcard body">
 		<span class="primary">
 			<strong><a href="" class="fn url">Bitcoin Statistics</a></strong>
 		</span>
 
 		<div class="bio">
-			<table>
+			<table style="width:100%">
+				<col/><col width="200"/>
 				<tr>
 					<th>Hashrate</th>
 					<td class="global_btc_hashrate"></td>
 				</tr>
 				<tr>
-					<th>Active Workers</th>
-					<td class="global_btc_workers"></td>
+					<th>Shares this Round</th>
+					<td class="global_btc_shares"></td>
 				</tr>
 				<tr>
 					<th>Payed out to date</th>
@@ -169,20 +211,21 @@
 	</div>
 
 
-	<div id="about" class="vcard body">
+	<div class="about vcard body">
 		<span class="primary">
 			<strong><a href="" class="fn url">Namecoin Statistics</a></strong>
 		</span>
 
 		<div class="bio">
-			<table>
+			<table style="width:100%">
+				<col/><col width="200"/>
 				<tr>
 					<th>Hashrate</th>
 					<td class="global_nmc_hashrate"></td>
 				</tr>
 				<tr>
-					<th>Active Workers</th>
-					<td class="global_nmc_workers"></td>
+					<th>Shares this Round</th>
+					<td class="global_nmc_shares"></td>
 				</tr>
 				<tr>
 					<th>Payed out to date</th>
@@ -193,20 +236,21 @@
 	</div>
 
 
-	<div id="about" class="vcard body">
+	<div class="about vcard body">
 		<span class="primary">
 			<strong><a href="" class="fn url">Solidcoin Statistics</a></strong>
 		</span>
 
 		<div class="bio">
-			<table>
+			<table style="width:100%">
+				<col/><col width="200"/>
 				<tr>
 					<th>Hashrate</th>
 					<td class="global_slc_hashrate"></td>
 				</tr>
 				<tr>
-					<th>Active Workers</th>
-					<td class="global_slc_workers"></td>
+					<th>Shares this Round</th>
+					<td class="global_slc_shares"></td>
 				</tr>
 				<tr>
 					<th>Payed out to date</th>

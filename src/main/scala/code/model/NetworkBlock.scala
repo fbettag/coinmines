@@ -65,5 +65,11 @@ class NetworkBlock extends LongKeyedMapper[NetworkBlock] with IdPK {
 		override def dbIndexed_? = true
 	}
 
+	object difficulty extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
+//		override def dbNotNull_? = true
+//		override def defaultValue = 0
+	}
+	
+
 
 }
