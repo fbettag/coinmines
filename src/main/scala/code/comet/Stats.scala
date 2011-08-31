@@ -54,7 +54,7 @@ case object Tick
 
 sealed trait StatsGatherCommand
 case class StatsCleanup extends StatsGatherCommand
-case class StatsReward extends StatsGatherCommand
+case class StatsReward(repeat: Boolean) extends StatsGatherCommand
 case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
 case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
@@ -76,15 +76,17 @@ case class StatsGlobalReply(
 
 
 object StatCollector extends LiftActor {
+
+	val calculateRewards = Props.get("pool.calculate") match {
+			case Full(a: String) => a.toBoolean
+			case _ => false
+	}
+
 	def boot() {
 		this ! Tick
 		this ! StatsCleanup
-
-		Props.get("pool.calculate") match {
-			case Full(a: String) if (a.toBoolean) =>
-				this ! StatsReward
-			case _ =>
-		}
+		if (calculateRewards)
+			this ! StatsReward
 	}
 
 	protected def messageHandler = {
@@ -92,11 +94,12 @@ object StatCollector extends LiftActor {
 			a.target ! getGlobal
 		case a: StatsGatherUser =>
 			a.target ! getUser(a.user)
-		case StatsCleanup =>
+		case a: StatsCleanup =>
 			cleanupJob
-			ActorPing.schedule(this, StatsCleanup, 10 minute)
-		case StatsReward =>
+			ActorPing.schedule(this, a, 10 minute)
+		case a: StatsReward =>
 			rewardJob
+			if (a.repeat) ActorPing.schedule(this, a, 10 seconds)
 		case Tick =>
 			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
