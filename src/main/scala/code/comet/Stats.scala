@@ -77,17 +77,19 @@ case class StatsGlobalReply(
 
 object StatCollector extends LiftActor {
 
+	def boot() {
+	}
+
 	val calculateRewards = Props.get("pool.calculate") match {
 			case Full(a: String) => a.toBoolean
 			case _ => false
 	}
 
-	def boot() {
-		this ! Tick
-		this ! StatsCleanup
-		if (calculateRewards)
-			this ! StatsReward
-	}
+	if (calculateRewards)
+	ActorPing.schedule(this, StatsReward(true), 1 second)
+	
+	ActorPing.schedule(this, Tick, 1 second)
+	ActorPing.schedule(this, StatsCleanup, 5 minutes)
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
