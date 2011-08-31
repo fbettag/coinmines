@@ -96,9 +96,20 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 		override def defaultValue = false
 	}
 
-	object wallet_btc extends MappedString(this, 255)
-	object wallet_nmc extends MappedString(this, 255)
-	object wallet_slc extends MappedString(this, 255)
+	private def toWallet(a: String) = a.replaceAll("[^a-zA-Z0-9]+", "")
+
+	object wallet_btc extends MappedString(this, 255) {
+		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
+	}
+
+	object wallet_nmc extends MappedString(this, 255) {
+		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
+	}
+
+	object wallet_slc extends MappedString(this, 255) {
+		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
+	}
+
 
 	object shares_total extends MappedLong(this) {
 		override def dbNotNull_? = true
