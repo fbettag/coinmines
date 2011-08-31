@@ -54,6 +54,7 @@ case object Tick
 
 sealed trait StatsGatherCommand
 case class StatsCleanup extends StatsGatherCommand
+case class StatsReward extends StatsGatherCommand
 case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
 case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
@@ -77,15 +78,13 @@ case class StatsGlobalReply(
 object StatCollector extends LiftActor {
 	def boot() {
 		this ! Tick
-	}
+		this ! StatsCleanup
 
-	// later, schedule itself for recalculation
-	ActorPing.schedule(this, Tick, 1 minute)
-
-	Props.get("pool.calculate") match {
-		case Full(a: String) if (a.toBoolean) =>
-			ActorPing.schedule(this, StatsCleanup, 10 minute)
-		case _ =>
+		Props.get("pool.calculate") match {
+			case Full(a: String) if (a.toBoolean) =>
+				this ! StatsReward
+			case _ =>
+		}
 	}
 
 	protected def messageHandler = {
@@ -96,6 +95,8 @@ object StatCollector extends LiftActor {
 		case StatsCleanup =>
 			cleanupJob
 			ActorPing.schedule(this, StatsCleanup, 10 minute)
+		case StatsReward =>
+			rewardJob
 		case Tick =>
 			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
@@ -109,17 +110,24 @@ object StatCollector extends LiftActor {
 	private var globalReply = StatsGlobalReply(invalidDate, 0, 0, 0, 0, 0.0, 0, 0, 0.0, 0, 0, 0.0)
 	private var userReplies: Map[String, StatsUserReply] = Map()
 
-	//private def cleanupJob {
-	def cleanupJob {
+	private def cleanupJob {
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
+	}
 
+	private def rewardJob {
 		def calcCoins(network: String) {
 			// Find all winning shares and sort them by ID
 			Share.findAll(By(Share.upstreamResult, true), By(Share.network, network), OrderBy(Share.id, Ascending)).map(winner => {
 				if (WonShare.count(By(WonShare.id, winner.id.is)) > 0) return
 				val shareCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is))
 				val staleCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
-				
+
+				val block = Coind.run(network match {
+					case "bitcoin" => BtcCmd("getblocknumber")
+					case "namecoin" => NmcCmd("getblocknumber")
+					case "solidcoin" => SlcCmd("getblocknumber")
+				}).toLong - 1L
+
 				try {
 					println("Found winning share %s".format(winner.id.is))
 					// Find all workers which submitted shares in this network before our winning block
@@ -173,6 +181,7 @@ object StatCollector extends LiftActor {
 				 } catch { case _ => }
 
 				WonShare.create.id(winner.id.is).
+					blockNumber(block).
 					username(winner.username.is).
 					ourResult(winner.ourResult.is).
 					upstreamResult(winner.upstreamResult.is).
@@ -397,6 +406,13 @@ class StatComet extends CometActor {
 		".global_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
 		".global_slc_hashrate *" #> "%.3f GH/sec".format(r.hashrateSlc / 1000.0)  &
 		".global_slc_shares *" #> r.sharesSlc &
-		".global_slc_payout *" #> "%.8f SLC".format(0.toFloat)
+		".global_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
+		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(20)).map(s =>
+			".blocks_network *" #> s.network &
+			".blocks_id *" #> s.blockNumber.toString &
+			".blocks_time *" #> s.timestamp.toString &
+			".blocks_shares *" #> s.shares.toString
+		)
+
 }
 

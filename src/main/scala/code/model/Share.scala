@@ -101,6 +101,11 @@ class WonShare extends LongKeyedMapper[WonShare] {
 		override def writePermission_? = true
 	}
 
+	object blockNumber extends MappedLong(this) {
+		override def dbIndexed_? = true
+		override def dbNotNull_? = true
+	}
+
 	object username extends MappedString(this, 255) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
