@@ -54,7 +54,7 @@ class Boot {
 			DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
 		}
 
-		Schemifier.schemify(true, Schemifier.infoF _, User, AccountBalance, NetworkBlock, PoolWorker, Share)
+		Schemifier.schemify(true, Schemifier.infoF _, User, AccountBalance, NetworkBlock, PoolWorker, WonShare, Share)
 
 		// where to search snippet
 		LiftRules.addToPackages("code")

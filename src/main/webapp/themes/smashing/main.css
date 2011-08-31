@@ -312,6 +312,12 @@ img.left, figure.left {float: right; margin: 0 0 2em 2em;}
 	-webkit-border-radius: 10px;
 }
 
+.role {
+color: #000305 !important;
+font-size: 87.5% !important;
+font-family: 'Trebuchet MS', Trebuchet, 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+line-height: 1.429 !important;
+}
 .about .primary, #about .primary {float: left; width: 165px;}
 .about .primary, #about .primary strong {color: #C64350; display: block; font-size: 1.286em;}
 .about .photo, #about .photo {float: left; margin: 5px 20px;}

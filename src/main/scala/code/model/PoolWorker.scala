@@ -71,4 +71,7 @@ class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK with JsEffects[Po
 			case _ => "never"
 		}
 	}
+
+	def owner = User.find(By(User.id, user.is)).open_!
+
 }

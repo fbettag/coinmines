@@ -42,6 +42,7 @@ import net.liftweb.common._
 
 import org.joda.time._
 import java.util.Date
+import java.math.BigInteger
 
 import scala.xml._
 import scala.collection.mutable.Map
@@ -59,18 +60,18 @@ case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCo
 sealed trait StatsReply
 case class StatsUserReply(
 	user: User, lastUpdate: DateTime,
-	hashrate: Int, total: Int, stale: Int,
-	hashrateBtc: Int, totalBtc: Int, roundBtc: Int, staleBtc: Int,
-	hashrateNmc: Int, totalNmc: Int, roundNmc: Int, staleNmc: Int,
-	hashrateSlc: Int, totalSlc: Int, roundSlc: Int, staleSlc: Int,
+	hashrate: Int, total: Long, stale: Long,
+	hashrateBtc: Int, totalBtc: Long, roundBtc: Long, staleBtc: Long, rewardBtc: Double,
+	hashrateNmc: Int, totalNmc: Long, roundNmc: Long, staleNmc: Long, rewardNmc: Double,
+	hashrateSlc: Int, totalSlc: Long, roundSlc: Long, staleSlc: Long, rewardSlc: Double,
 	global: StatsGlobalReply) extends StatsReply
 
 case class StatsGlobalReply(
 	lastUpdate: DateTime,
 	hashrate: Int, workers: Int,
-	hashrateBtc: Int, sharesBtc: Int, payoutBtc: Double,
-	hashrateNmc: Int, sharesNmc: Int, payoutNmc: Double,
-	hashrateSlc: Int, sharesSlc: Int, payoutSlc: Double) extends StatsReply
+	hashrateBtc: Int, sharesBtc: Long, payoutBtc: Double,
+	hashrateNmc: Int, sharesNmc: Long, payoutNmc: Double,
+	hashrateSlc: Int, sharesSlc: Long, payoutSlc: Double) extends StatsReply
 
 
 object StatCollector extends LiftActor {
@@ -80,7 +81,12 @@ object StatCollector extends LiftActor {
 
 	// later, schedule itself for recalculation
 	ActorPing.schedule(this, Tick, 1 minute)
-	ActorPing.schedule(this, StatsCleanup, 10 minute)
+
+	Props.get("pool.calculate") match {
+		case Full(a: String) if (a.toBoolean) =>
+			ActorPing.schedule(this, StatsCleanup, 10 minute)
+		case _ =>
+	}
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
@@ -103,12 +109,109 @@ object StatCollector extends LiftActor {
 	private var globalReply = StatsGlobalReply(invalidDate, 0, 0, 0, 0, 0.0, 0, 0, 0.0, 0, 0, 0.0)
 	private var userReplies: Map[String, StatsUserReply] = Map()
 
-	private def cleanupJob {
+	//private def cleanupJob {
+	def cleanupJob {
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
+
+		def calcCoins(network: String) {
+			// Find all winning shares and sort them by ID
+			Share.findAll(By(Share.upstreamResult, true), By(Share.network, network), OrderBy(Share.id, Ascending)).map(winner => {
+				if (WonShare.count(By(WonShare.id, winner.id.is)) > 0) return
+				val shareCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is))
+				val staleCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
+				
+				try {
+					println("Found winning share %s".format(winner.id.is))
+					// Find all workers which submitted shares in this network before our winning block
+					val stalesQueryString = "SELECT count(id) FROM shares AS ss WHERE id < %s AND network = '%s' AND our_result = false AND ss.username = ws.username GROUP BY username".format(winner.id.is, winner.network.is)
+					val sharesQueryString = "SELECT username, count(id) AS shares, (%s) AS stales FROM shares AS ws WHERE id < %s AND network = '%s' GROUP BY username".format(stalesQueryString, winner.id.is, winner.network.is)
+					println("query: %s".format(sharesQueryString))
+					val r = DB.runQuery(sharesQueryString)
+
+
+					// for every worker with shares, try to find it
+					r._2.map(wi => PoolWorker.find(By(PoolWorker.username, wi(0))) match {
+						case Full(p: PoolWorker) => archiveShares(p, winner.network.is, wi(1).toLong, wi(2).toLong, winner.id.is)
+						case _ =>
+					})
+
+					def archiveShares(worker: PoolWorker, network: String, shares: Long, stales: Long, belowId: Long) {
+						println("got %s shares (%s stale) for %s on %s (below %s)".format(shares, stales, worker.username, network, belowId))
+						val user = worker.owner.reload
+
+						// shares
+						user.shares_total(user.shares_total.is + shares)
+						user.shares_stale(user.shares_stale.is + stales)
+						network match {
+							case "bitcoin" =>
+								user.shares_total_btc(user.shares_total_btc.is + shares)
+								user.shares_stale_btc(user.shares_stale_btc.is + stales)
+
+							case "namecoin" =>
+								user.shares_total_nmc(user.shares_total_nmc.is + shares)
+								user.shares_stale_nmc(user.shares_stale_nmc.is + stales)
+
+							case "solidcoin" =>
+								user.shares_total_slc(user.shares_total_slc.is + shares)
+								user.shares_stale_slc(user.shares_stale_slc.is + stales)
+
+							case _ =>
+						}
+
+						// reward
+						val rew = reward(user.donatePercent.toDouble, network, shares, shareCount)
+						AccountBalance.create.user(user.id.is).network(network).balance(rew).save
+					
+						network match {
+							case "bitcoin" => user.balance_btc(user.balances_btc.foldLeft(0.0) { _ + _.balance.toDouble })
+							case "namecoin" => user.balance_nmc(user.balances_nmc.foldLeft(0.0) { _ + _.balance.toDouble })
+							case "solidcoin" => user.balance_slc(user.balances_slc.foldLeft(0.0) { _ + _.balance.toDouble })
+						}
+
+						user.save
+					}
+				 } catch { case _ => }
+
+				WonShare.create.id(winner.id.is).
+					username(winner.username.is).
+					ourResult(winner.ourResult.is).
+					upstreamResult(winner.upstreamResult.is).
+					reason(winner.reason.is).
+					solution(winner.solution.is).
+					timestamp(winner.timestamp.is).
+					source(winner.source.is).
+					network(winner.network.is).
+					shares(shareCount).
+					stales(staleCount).
+					save
+				Share.bulkDelete_!!(By_<(Share.id, winner.id.is), By(Share.network, network))
+				winner.delete_!
+			})
+		}
+
+		calcCoins("bitcoin")
+		calcCoins("namecoin")
+		calcCoins("solidcoin")
+	}
+
+	private def reward(donate: Double, network: String, current: Long, total: Long) = {
+
+		val coins = network match {
+			case "bitcoin" => 50.00
+			case "namecoin" => 50.00
+			case "solidcoin" => 32.00
+			case _ => 0.0
+		}
+
+		val calcTotal = total
+		val poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
+
+		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / calcTotal.toDouble) * current.toDouble) * (1-(donate.toDouble/100.0))
 	}
 
 	private def minuteJob {
 		try {
+			// We do this in database as row-based update, seemed faster than to iterate over everyone in scala.
 			DB.runQuery("""
 				UPDATE pool_worker SET
 				lasthash = (SELECT MAX(shares.timestamp_c) FROM shares WHERE pool_worker.username = shares.username),
@@ -119,7 +222,7 @@ object StatCollector extends LiftActor {
 				RETURNING 0""")
 		} catch { case _ => }
 
-		def addBlock(net: String, diff: Double, block: Int): Boolean =
+		def addBlock(net: String, diff: Double, block: Long): Boolean =
 			NetworkBlock.find(By(NetworkBlock.network, net), By(NetworkBlock.blockNumber, block)) match {
 				case Full(a: NetworkBlock) => true
 				case _ => NetworkBlock.create.blockNumber(block).timestamp(currentDate.toDate).network(net).difficulty(diff).save
@@ -128,26 +231,26 @@ object StatCollector extends LiftActor {
 
 		/* Update blocks */
 		var diff = Coind.run(BtcCmd("getdifficulty")).toDouble
-		var block = Coind.run(BtcCmd("getblocknumber")).toInt
+		var block = Coind.run(BtcCmd("getblocknumber")).toLong
 		addBlock("bitcoin", diff, block)
 		
 		diff = Coind.run(NmcCmd("getdifficulty")).toDouble
-		block = Coind.run(NmcCmd("getblocknumber")).toInt
+		block = Coind.run(NmcCmd("getblocknumber")).toLong
 		addBlock("namecoin", diff, block)
 		
 		diff = Coind.run(SlcCmd("getdifficulty")).toDouble
-		block = Coind.run(SlcCmd("getblocknumber")).toInt
+		block = Coind.run(SlcCmd("getblocknumber")).toLong
 		addBlock("solidcoin", diff, block)
 	}
 
 	/* reload needed data */
 	private def getUser(user: User): StatsUserReply = {
-		def rawQuery(network: String, andWhere: String) = try {
-			DB.runQuery("SELECT COUNT(id) FROM shares WHERE network = '%s' AND username LIKE '%s_%%' %s".format(network, user.email.is, andWhere))._2.first.first.toInt
-		} catch { case _ => 0 }
-		
-		def shareQuery(network: String) = rawQuery(network, "")
-		def staleQuery(network: String) = rawQuery(network, "AND our_result = false")
+	
+		def shareQuery(network: String) =
+			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.email.is)))
+
+		def staleQuery(network: String) =
+			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.email.is)), By(Share.ourResult, false))
 
 		userReplies.get(user.email) match {
 			case Some(a: StatsUserReply) if (a.lastUpdate.isAfter(invalidDate)) => a
@@ -162,14 +265,17 @@ object StatCollector extends LiftActor {
 
 				val repl: StatsUserReply = new StatsUserReply(user, currentDate,
 					user.workers.foldLeft(0) { _ + _.hashrate },
-					user.shares_total + btcShares + nmcShares + slcShares,
-					user.shares_stale + btcStales + nmcStales + slcStales,
+					user.shares_total.is + btcShares + nmcShares + slcShares,
+					user.shares_stale.is + btcStales + nmcStales + slcStales,
 					user.workers.foldLeft(0) { _ + _.hashrate_btc },
-					user.shares_total_btc + btcShares, btcShares, user.shares_stale_btc + btcStales,
+					user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
+					reward(user.donatePercent.toDouble, "bitcoin", btcShares, getGlobal.sharesBtc),
 					user.workers.foldLeft(0) { _ + _.hashrate_nmc },
-					user.shares_total_nmc + nmcShares, nmcShares, user.shares_stale_nmc + nmcStales,
+					user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
+					reward(user.donatePercent.toDouble, "namecoin", nmcShares, getGlobal.sharesNmc),
 					user.workers.foldLeft(0) { _ + _.hashrate_slc },
-					user.shares_total_slc + slcShares, slcShares, user.shares_stale_slc + slcStales,
+					user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
+					reward(user.donatePercent.toDouble, "solidcoin", slcShares, getGlobal.sharesSlc),
 					getGlobal)
 				userReplies += (user.email.is -> repl)
 				repl
@@ -180,18 +286,17 @@ object StatCollector extends LiftActor {
 	private def getGlobal: StatsGlobalReply = {
 		if (globalReply.lastUpdate.isBefore(shortInvalidDate)) {
 			/* Shares */
-			def sharesQuery(network: String) = try {
-				DB.runQuery("SELECT SUM(id) FROM shares WHERE network = '%s'".format(network))._2.first.first.toInt
-			} catch { case _ => 0 }
+			def sharesQuery(network: String) = Share.count(By(Share.network, network))
 
 			val globalSharesBtc = sharesQuery("bitcoin")
 			val globalSharesNmc = sharesQuery("namecoin")
 			val globalSharesSlc = sharesQuery("solidcoin")
 
 			/* Hashrate */
-			def hashrateQuery(network: String) = try {
-				DB.runQuery("SELECT (COUNT(id) * 4294967296)/600/1000000 FROM shares WHERE timestamp_c >= NOW() - interval '10 minutes' AND network = '%s'".format(network))._2.first.first.toInt
-			} catch { case _ => 0 }
+			def hashrateQuery(network: String) = {
+				val shares = Share.count(By_>(Share.timestamp, currentDate.minusMinutes(10).toDate), By(Share.network, network))
+				BigInt(shares) * BigInt("4294967296") / 600 / 1000000
+			}.toInt
 
 			val globalHashrateBtc = hashrateQuery("bitcoin")
 			val globalHashrateNmc = hashrateQuery("namecoin")
@@ -199,9 +304,7 @@ object StatCollector extends LiftActor {
 			val globalHashrate = globalHashrateBtc + globalHashrateNmc + globalHashrateSlc
 
 			/* Workers */
-			val globalWorkers = try {
-				DB.runQuery("SELECT COUNT(id) FROM pool_worker WHERE lasthash > NOW() - interval '10 minutes'")._2.first.first.toInt
-			} catch { case _ => 0 }
+			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(10).toDate)).toInt
 
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
 				globalHashrateBtc, globalSharesBtc, 0.0, // globalPayoutBtc
@@ -231,11 +334,11 @@ class StatComet extends CometActor {
 			StatCollector ! msg
 
 		case a: StatsGlobalReply =>
-			partialUpdate(SetHtml("thestats", cssSel(a).apply(defaultHtml)))
+			partialUpdate(Replace("thestats", cssSel(a).apply(defaultHtml)))
 			ActorPing.schedule(this, Tick, 100 seconds) 
 
 		case a: StatsUserReply =>
-			partialUpdate(SetHtml("thestats", cssSel(a).apply(defaultHtml)))
+			partialUpdate(Replace("thestats", cssSel(a).apply(defaultHtml)))
 			ActorPing.schedule(this, Tick, 30 seconds) 
 	}
 
@@ -247,14 +350,15 @@ class StatComet extends CometActor {
 	def hashrate = 0
 	def cssSel(r: StatsUserReply): CssSel =
 		"#workerlist [style]" #> (if (r.hashrate > 0.000) "" else "display: none") &
-		".miner_row *" #> r.user.workers.map(w =>
+		".miner_row *" #> r.user.reload.workers.map(w => {
+			w.reload
 			".miner_name *" #> w.username &
 			".miner_hashrate *" #> w.hashrate &
 			//".miner_hashrate_btc *" #> "%s MH/s".format(w.hashrate_btc) &
 			//".miner_hashrate_nmc *" #> "%s MH/s".format(w.hashrate_nmc) &
 			//".miner_hashrate_slc *" #> "%s MH/s".format(w.hashrate_slc) &
 			".miner_lasthash *" #> w.lasthash.toString 
-		) &
+		}) &
 		".user_hashrate *" #> "%s MH/sec".format(r.hashrate) &
 		".user_shares_total *" #> r.total &
 		".user_shares_stale *" #> r.stale &
@@ -262,21 +366,27 @@ class StatComet extends CometActor {
 		".user_btc_shares_total *" #> r.totalBtc &
 		".user_btc_shares_round *" #> r.roundBtc &
 		".user_btc_shares_stale *" #> r.staleBtc &
+		".user_btc_balance *" #> "%.8f BTC".format(r.user.balance_btc.is) &
+		".user_btc_reward *" #> "%.8f BTC".format(r.rewardBtc) &
 		".user_btc_payout *" #> "%.8f BTC".format(0.toFloat) &
 		".user_nmc_hashrate *" #> "%s MH/sec".format(r.hashrateNmc)  &
 		".user_nmc_shares_total *" #> r.totalNmc &
 		".user_nmc_shares_round *" #> r.roundNmc &
 		".user_nmc_shares_stale *" #> r.staleNmc &
+		".user_nmc_balance *" #> "%.8f NMC".format(r.user.balance_nmc.is) &
+		".user_nmc_reward *" #> "%.8f NMC".format(r.rewardNmc) &
 		".user_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
 		".user_slc_hashrate *" #> "%s MH/sec".format(r.hashrateSlc)  &
 		".user_slc_shares_total *" #> r.totalSlc &
 		".user_slc_shares_round *" #> r.roundSlc &
 		".user_slc_shares_stale *" #> r.staleSlc &
+		".user_slc_balance *" #> "%.8f SLC".format(r.user.balance_slc.is) &
+		".user_slc_reward *" #> "%.8f SLC".format(r.rewardSlc) &
 		".user_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
 		cssSel(r.global)
 
 	def cssSel(r: StatsGlobalReply): CssSel =
-		".last_updated *" #> <span>Last updated at<br/>{DateTimeHelpers.getDate.toString("yyyy-MM-dd HH:mm:ss")}</span> &
+		".last_updated *" #> <xml:group>Last updated at<br/>{DateTimeHelpers.getDate.toString("yyyy-MM-dd HH:mm:ss")}</xml:group> &
 		".global_hashrate *" #> "%.1f GH/sec".format(r.hashrate / 1000.0)  &
 		".global_workers *" #> r.workers &
 		".global_btc_hashrate *" #> "%.3f GH/sec".format(r.hashrateBtc / 1000.0)  &

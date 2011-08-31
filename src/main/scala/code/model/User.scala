@@ -51,7 +51,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	//override def lostPasswordMenuLoc: Box[Menu] = Empty
 	//override def resetPasswordMenuLoc: Box[Menu] = Empty
 
-	object loginReferer extends SessionVar("/account")
+	object loginReferer extends SessionVar("/stats")
 
 	override def homePage = {
 		var ret = loginReferer
@@ -60,7 +60,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	}
 
 	override def login = {
-		for (r <- S.referer if loginReferer.is == "/account") loginReferer.set(r)
+		for (r <- S.referer if loginReferer.is == "/stats") loginReferer.set(r)
 		super.login
 	}
 
@@ -100,17 +100,49 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 	object wallet_nmc extends MappedString(this, 255)
 	object wallet_slc extends MappedString(this, 255)
 
-	object shares_total extends MappedInt(this)
-	object shares_stale extends MappedInt(this)
+	object shares_total extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
 
-	object shares_total_btc extends MappedInt(this)
-	object shares_stale_btc extends MappedInt(this)
+	object shares_stale extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
 
-	object shares_total_nmc extends MappedInt(this)
-	object shares_stale_nmc extends MappedInt(this)
 
-	object shares_total_slc extends MappedInt(this)
-	object shares_stale_slc extends MappedInt(this)
+	object shares_total_btc extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
+
+	object shares_stale_btc extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
+
+
+	object shares_total_nmc extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
+
+	object shares_stale_nmc extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
+
+
+	object shares_total_slc extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
+
+	object shares_stale_slc extends MappedLong(this) {
+		override def dbNotNull_? = true
+		override def defaultValue = 0L
+	}
+
 
 	object payoutlock extends MappedBoolean(this) {
 		override def dbNotNull_? = true
@@ -143,7 +175,11 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 		override def defaultValue = 0
 	}
 	
-	def balances: List[AccountBalance] = AccountBalance.findAll(By(AccountBalance.user, this.id))
+	private def balances(network: String) = AccountBalance.findAll(By(AccountBalance.user, this.id), By(AccountBalance.network, network))
+	def balances_btc = balances("bitcoin")
+	def balances_nmc = balances("namecoin")
+	def balances_slc = balances("solidcoin")
+
 	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
 	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
 

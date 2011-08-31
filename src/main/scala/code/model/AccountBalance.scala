@@ -74,4 +74,9 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 		def beforeCreate = this(new Date)
 	}
 
+	object network extends MappedString(this, 20) {
+		override def dbNotNull_? = true
+		override def dbIndexed_? = true
+	}
+
 }
