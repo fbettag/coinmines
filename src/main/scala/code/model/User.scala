@@ -176,6 +176,7 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 	}
 	
 	private def balances(network: String) = AccountBalance.findAll(By(AccountBalance.user, this.id), By(AccountBalance.network, network))
+	def balances = AccountBalance.findAll(By(AccountBalance.user, this.id))
 	def balances_btc = balances("bitcoin")
 	def balances_nmc = balances("namecoin")
 	def balances_slc = balances("solidcoin")

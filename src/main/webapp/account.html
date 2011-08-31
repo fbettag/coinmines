@@ -64,40 +64,29 @@
 		</div>
 	</div>
 
-	<div id="about" class="vcard body">
+	<div id="about" class="vcard body lift:Account.payments">
 		<span class="primary">
 			<strong><a href="" class="fn url">Your Payments</a></strong>
 			<span class="role">List of your Transactions</span>
 		</span>
 
-		<strong>IMPORTANT!</strong>
-		<br/><br/>
+		<strong>Payout is in development as soon as we get some shares!<br/> Thanks for understanding and helping!</strong><br/><br/>
 
-		<p>We currently do not have payment yet, but all your calculated shares will be summed once we have enough data to complete that part of the code. I know this sounds silly, but i cannot rely on log outputs posted online, i have to see and parse it form myself.</p>
-
-		<p>You will all get your shares and BTC for it, once the code is finished. That depends on how fast we calculate the first 50 BTC package, because that is the part of the logfile i need.</p>
-
-		<strong>Thanks for understanding and helping!</strong>
-
-<!--		<div class="lift:Payment.list bio">
+		<div class="bio">
 			<table>
-				<thead>
 				<tr>
-					<th>Date</th>
-					<th>Wallet</th>
 					<th>Amount</th>
+					<th>Wallet</th>
+					<th>Date</th>
 				</tr>
-				</thead>
-				<tbody id="payment_list" lift:bind="payment:table">
-					<tr lift:bind="payment:row">
-						<th><balance:timestamp></balance:timestamp></th>
-						<th><balance:wallet></balance:wallet></th>
-						<th><balance:amount></balance:amount></th>
-					</tr>
-				</tbody>
+				<tr class="payment_row">
+					<td class="payment_amount">0.0000000 BTC</td>
+					<td class="payment_wallet"></td>
+					<td class="payment_date"></td>
+				</tr>
 			</table>
 		</div>
-	</div>-->
+	</div>
 </section>
 
 <section class="body">

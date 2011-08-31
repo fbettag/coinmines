@@ -37,6 +37,7 @@ import net.liftweb._
 import net.liftweb.util._
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
+import net.liftweb.mapper._
 import net.liftweb.http._
 
 import model._
@@ -123,6 +124,20 @@ class Account extends Loggable {
 		".user_details_email [value]" #> user.email &
 		".user_details_donation [value]" #> "%.2f".format(user.donatePercent.toFloat)
 
+	}
+
+	def payments: CssSel = {
+		val balances = AccountBalance.findAll(By(AccountBalance.user, user.id.is), By_>(AccountBalance.balance, 0), OrderBy(AccountBalance.timestamp, Descending))
+		if (balances.length == 0) return "*" #> ""
+
+		".payment_row *" #> balances.map(b =>
+			".payment_wallet *" #> b.sendAddress.is &
+			".payment_date *" #> b.timestamp.toString &
+			".payment_amount *" #> "%.8f %s".format(b.balance.is, b.network.is match {
+				case "bitcoin" => "BTC"
+				case "namecoin" => "NMC"
+				case "solidcoin" => "SLC"
+			}))
 	}
 
 }

@@ -59,20 +59,18 @@ case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
 case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
 sealed trait StatsReply
+case class StatsUserCoinReply(hashrate: Int, total: Long, round: Long, stale: Long, reward: Double, rewardUnconfirmed: Double) extends StatsReply
 case class StatsUserReply(
 	user: User, lastUpdate: DateTime,
 	hashrate: Int, total: Long, stale: Long,
-	hashrateBtc: Int, totalBtc: Long, roundBtc: Long, staleBtc: Long, rewardBtc: Double,
-	hashrateNmc: Int, totalNmc: Long, roundNmc: Long, staleNmc: Long, rewardNmc: Double,
-	hashrateSlc: Int, totalSlc: Long, roundSlc: Long, staleSlc: Long, rewardSlc: Double,
+	bitcoin: StatsUserCoinReply, namecoin: StatsUserCoinReply, solidcoin: StatsUserCoinReply,
 	global: StatsGlobalReply) extends StatsReply
 
+case class StatsGlobalCoinReply(hashrate: Int, shares: Long, payout: Double) extends StatsReply
 case class StatsGlobalReply(
 	lastUpdate: DateTime,
 	hashrate: Int, workers: Int,
-	hashrateBtc: Int, sharesBtc: Long, payoutBtc: Double,
-	hashrateNmc: Int, sharesNmc: Long, payoutNmc: Double,
-	hashrateSlc: Int, sharesSlc: Long, payoutSlc: Double) extends StatsReply
+	bitcoin: StatsGlobalCoinReply, namecoin: StatsGlobalCoinReply, solidcoin: StatsGlobalCoinReply) extends StatsReply
 
 
 object StatCollector extends LiftActor {
@@ -112,9 +110,56 @@ object StatCollector extends LiftActor {
 	def invalidDate = currentDate.minusMinutes(1).minusSeconds(1)
 	def shortInvalidDate = currentDate.minusSeconds(30)
 
-	private var globalReply = StatsGlobalReply(invalidDate, 0, 0, 0, 0, 0.0, 0, 0, 0.0, 0, 0, 0.0)
+	private var globalReply =
+		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0))
 	private var userReplies: Map[String, StatsUserReply] = Map()
+	
+	def balanceIsEligible(u: User, b: AccountBalance): Boolean = {
+		if (DateTimeHelpers.getDate(b.timestamp).isBefore(currentDate.minusHours(24)))
+			return true
+		
+		if (DateTimeHelpers.getDate(b.timestamp).isAfter(currentDate.minusHours(24)) && u.donatePercent >= 2.0)
+			return true
 
+		false
+	}
+
+	private def accountBalance(user: User, network: String) = {
+		val balances = network match {
+			case "bitcoin" => user.balances_btc
+			case "namecoin" => user.balances_nmc
+			case "solidcoin" => user.balances_slc
+		}
+
+		balances.filter(!balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble }
+	}
+
+	private def unconfirmedReward(user: User, network: String) = {
+		val balances = network match {
+			case "bitcoin" => user.balances_btc
+			case "namecoin" => user.balances_nmc
+			case "solidcoin" => user.balances_slc
+		}
+
+		balances.filter(balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble }
+	}
+
+	private def reward(donate: Double, network: String, current: Long, total: Long) = {
+		val coins = network match {
+			case "bitcoin" => 50.00
+			case "namecoin" => 50.00
+			case "solidcoin" => 32.00
+			case _ => 0.0
+		}
+
+		val calcTotal = total
+		val poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
+
+		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / calcTotal.toDouble) * current.toDouble) * (1-(donate.toDouble/100.0))
+	}
+
+
+	/** Jobs **/
 	private def cleanupJob {
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
 	}
@@ -174,11 +219,11 @@ object StatCollector extends LiftActor {
 						// reward
 						val rew = reward(user.donatePercent.toDouble, network, shares, shareCount)
 						AccountBalance.create.user(user.id.is).network(network).balance(rew).save
-					
+						val totalBalance = accountBalance(user, network)
 						network match {
-							case "bitcoin" => user.balance_btc(user.balances_btc.foldLeft(0.0) { _ + _.balance.toDouble })
-							case "namecoin" => user.balance_nmc(user.balances_nmc.foldLeft(0.0) { _ + _.balance.toDouble })
-							case "solidcoin" => user.balance_slc(user.balances_slc.foldLeft(0.0) { _ + _.balance.toDouble })
+							case "bitcoin" => user.balance_btc(totalBalance)
+							case "namecoin" => user.balance_nmc(totalBalance)
+							case "solidcoin" => user.balance_slc(totalBalance)
 						}
 
 						user.save
@@ -206,21 +251,6 @@ object StatCollector extends LiftActor {
 		calcCoins("bitcoin")
 		calcCoins("namecoin")
 		calcCoins("solidcoin")
-	}
-
-	private def reward(donate: Double, network: String, current: Long, total: Long) = {
-
-		val coins = network match {
-			case "bitcoin" => 50.00
-			case "namecoin" => 50.00
-			case "solidcoin" => 32.00
-			case _ => 0.0
-		}
-
-		val calcTotal = total
-		val poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
-
-		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / calcTotal.toDouble) * current.toDouble) * (1-(donate.toDouble/100.0))
 	}
 
 	private def minuteJob {
@@ -281,15 +311,21 @@ object StatCollector extends LiftActor {
 					user.workers.foldLeft(0) { _ + _.hashrate },
 					user.shares_total.is + btcShares + nmcShares + slcShares,
 					user.shares_stale.is + btcStales + nmcStales + slcStales,
-					user.workers.foldLeft(0) { _ + _.hashrate_btc },
-					user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
-					reward(user.donatePercent.toDouble, "bitcoin", btcShares, getGlobal.sharesBtc),
-					user.workers.foldLeft(0) { _ + _.hashrate_nmc },
-					user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
-					reward(user.donatePercent.toDouble, "namecoin", nmcShares, getGlobal.sharesNmc),
-					user.workers.foldLeft(0) { _ + _.hashrate_slc },
-					user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
-					reward(user.donatePercent.toDouble, "solidcoin", slcShares, getGlobal.sharesSlc),
+					StatsUserCoinReply(
+						user.workers.foldLeft(0) { _ + _.hashrate_btc },
+						user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
+						reward(user.donatePercent.toDouble, "bitcoin", btcShares, getGlobal.bitcoin.shares),
+						unconfirmedReward(user, "bitcoin")),
+					StatsUserCoinReply(
+						user.workers.foldLeft(0) { _ + _.hashrate_nmc },
+						user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
+						reward(user.donatePercent.toDouble, "namecoin", nmcShares, getGlobal.namecoin.shares),
+						unconfirmedReward(user, "namecoin")),
+					StatsUserCoinReply(
+						user.workers.foldLeft(0) { _ + _.hashrate_slc },
+						user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
+						reward(user.donatePercent.toDouble, "solidcoin", slcShares, getGlobal.solidcoin.shares),
+						unconfirmedReward(user, "solidcoin")),
 					getGlobal)
 				userReplies += (user.email.is -> repl)
 				repl
@@ -321,9 +357,9 @@ object StatCollector extends LiftActor {
 			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(10).toDate)).toInt
 
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
-				globalHashrateBtc, globalSharesBtc, 0.0, // globalPayoutBtc
-				globalHashrateNmc, globalSharesNmc, 0.0, // globalPayoutNmc
-				globalHashrateSlc, globalSharesSlc, 0.0) // globalPayoutSlc
+				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, 0.0), // globalPayoutBtc
+				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, 0.0), // globalPayoutNmc
+				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, 0.0)) // globalPayoutSlc
 		}
 		globalReply
 	}
@@ -376,26 +412,29 @@ class StatComet extends CometActor {
 		".user_hashrate *" #> "%s MH/sec".format(r.hashrate) &
 		".user_shares_total *" #> r.total &
 		".user_shares_stale *" #> r.stale &
-		".user_btc_hashrate *" #> "%s MH/sec".format(r.hashrateBtc)  &
-		".user_btc_shares_total *" #> r.totalBtc &
-		".user_btc_shares_round *" #> r.roundBtc &
-		".user_btc_shares_stale *" #> r.staleBtc &
+		".user_btc_hashrate *" #> "%s MH/sec".format(r.bitcoin.hashrate)  &
+		".user_btc_shares_total *" #> r.bitcoin.total &
+		".user_btc_shares_round *" #> r.bitcoin.round &
+		".user_btc_shares_stale *" #> r.bitcoin.stale &
 		".user_btc_balance *" #> "%.8f BTC".format(r.user.balance_btc.is) &
-		".user_btc_reward *" #> "%.8f BTC".format(r.rewardBtc) &
+		".user_btc_reward *" #> "%.8f BTC".format(r.bitcoin.reward) &
+		".user_btc_reward_unconfirmed *" #> "%.8f BTC".format(r.bitcoin.rewardUnconfirmed) &
 		".user_btc_payout *" #> "%.8f BTC".format(0.toFloat) &
-		".user_nmc_hashrate *" #> "%s MH/sec".format(r.hashrateNmc)  &
-		".user_nmc_shares_total *" #> r.totalNmc &
-		".user_nmc_shares_round *" #> r.roundNmc &
-		".user_nmc_shares_stale *" #> r.staleNmc &
+		".user_nmc_hashrate *" #> "%s MH/sec".format(r.namecoin.hashrate)  &
+		".user_nmc_shares_total *" #> r.namecoin.total &
+		".user_nmc_shares_round *" #> r.namecoin.round &
+		".user_nmc_shares_stale *" #> r.namecoin.stale &
 		".user_nmc_balance *" #> "%.8f NMC".format(r.user.balance_nmc.is) &
-		".user_nmc_reward *" #> "%.8f NMC".format(r.rewardNmc) &
+		".user_nmc_reward *" #> "%.8f NMC".format(r.namecoin.reward) &
+		".user_nmc_reward_unconfirmed *" #> "%.8f NMC".format(r.namecoin.rewardUnconfirmed) &
 		".user_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
-		".user_slc_hashrate *" #> "%s MH/sec".format(r.hashrateSlc)  &
-		".user_slc_shares_total *" #> r.totalSlc &
-		".user_slc_shares_round *" #> r.roundSlc &
-		".user_slc_shares_stale *" #> r.staleSlc &
+		".user_slc_hashrate *" #> "%s MH/sec".format(r.solidcoin.hashrate)  &
+		".user_slc_shares_total *" #> r.solidcoin.total &
+		".user_slc_shares_round *" #> r.solidcoin.round &
+		".user_slc_shares_stale *" #> r.solidcoin.stale &
 		".user_slc_balance *" #> "%.8f SLC".format(r.user.balance_slc.is) &
-		".user_slc_reward *" #> "%.8f SLC".format(r.rewardSlc) &
+		".user_slc_reward *" #> "%.8f SLC".format(r.solidcoin.reward) &
+		".user_slc_reward_unconfirmed *" #> "%.8f SLC".format(r.solidcoin.rewardUnconfirmed) &
 		".user_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
 		cssSel(r.global)
 
@@ -403,14 +442,14 @@ class StatComet extends CometActor {
 		".last_updated *" #> <xml:group>Last updated at<br/>{DateTimeHelpers.getDate.toString("yyyy-MM-dd HH:mm:ss")}</xml:group> &
 		".global_hashrate *" #> "%.1f GH/sec".format(r.hashrate / 1000.0)  &
 		".global_workers *" #> r.workers &
-		".global_btc_hashrate *" #> "%.3f GH/sec".format(r.hashrateBtc / 1000.0)  &
-		".global_btc_shares *" #> r.sharesBtc &
+		".global_btc_hashrate *" #> "%.3f GH/sec".format(r.bitcoin.hashrate / 1000.0)  &
+		".global_btc_shares *" #> r.bitcoin.shares &
 		".global_btc_payout *" #> "%.8f BTC".format(0.toFloat) &
-		".global_nmc_hashrate *" #> "%.3f GH/sec".format(r.hashrateNmc / 1000.0)  &
-		".global_nmc_shares *" #> r.sharesNmc &
+		".global_nmc_hashrate *" #> "%.3f GH/sec".format(r.namecoin.hashrate / 1000.0)  &
+		".global_nmc_shares *" #> r.namecoin.shares &
 		".global_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
-		".global_slc_hashrate *" #> "%.3f GH/sec".format(r.hashrateSlc / 1000.0)  &
-		".global_slc_shares *" #> r.sharesSlc &
+		".global_slc_hashrate *" #> "%.3f GH/sec".format(r.solidcoin.hashrate / 1000.0)  &
+		".global_slc_shares *" #> r.solidcoin.shares &
 		".global_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
 		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(20)).map(s =>
 			".blocks_network *" #> s.network &
