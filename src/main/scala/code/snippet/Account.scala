@@ -39,6 +39,11 @@ import net.liftweb.util.Helpers._
 import net.liftweb.common._
 import net.liftweb.mapper._
 import net.liftweb.http._
+import net.liftweb.http.js._
+import net.liftweb.http.js.JE._
+import net.liftweb.http.js.JsCmds._
+import net.liftweb.http.js.JE.JsRaw
+import net.liftweb.http.js.JsCmd
 
 import model._
 
@@ -76,14 +81,19 @@ class Account extends Loggable {
 		user.saveWithJsFeedback("...")
 	}
 
-	def sendcoins(xhtml: NodeSeq) : NodeSeq = NodeSeq.Empty
+	def sendcoins(network: String): JsCmd = Noop
 	/*{
-		SHtml.ajaxText("%.2f".format(user.balance.is), sendcoinsToAccount(_), "style" -> "width:40px;", "id" -> "sendcoin_amount")
-	}*/
+		// needs to remove the 0.02 coin from user.balances accumulated,
+		// it is already substracted from user.balance_X
+		// remove 0.01 SLC, 0.0005 BTC, 0.01 NMC - 0.02 fee (difference goes to us)
+		// check with accounting!
 
-	def sendcoinsToAccount(amountStr: String) = js.JsCmds.Noop
-/*	{
-		val amount = amountStr.replaceFirst(",", ".")
+		// refresh balance with statscollector.accountBalance
+		//val res = Coind.call(BtcCmd("sendtoaddress %s %.8f".format(user.wallet_btc.is, balance)))
+		//if (res._1)
+		//	AccountBalance.create.user(user).network("bitcoin").balance(balance)
+		// refresh balance with statscollector.accountBalance (again)
+
 		val balance = AccountBalance.create.user(user).sendAddress(user.wallet)
 		balance.balance.setFromString(amount)
 		balance.paid(true).timestamp(new Date).save
@@ -91,19 +101,38 @@ class Account extends Loggable {
 		js.jquery.JqJsCmds.Hide("sendcoin_amount") &
 		js.jquery.JqJsCmds.FadeIn("sent_coins", 300, 600) &
 		js.JsCmds.SetHtml("account_balance", <span>{"%.8f BTC".format(user.balance.toFloat - balance.balance.toFloat)}</span>)
+		
+		"%.8f BTC".format(balance)
+		selector = "btc" "nmc" "slc"
+		JsRaw("$('.user_balance_%s').effect('highlight', {times: 2}, 400)".format(selector)).cmd
 	}*/
 
 
 	/* snippets */
 	def balance =
+		".user_balance_btc [onclick]" #> ({ if (user.balance_btc.is == 0.0)
+			Alert("Sorry, not enough funds!").toJsCmd.toString else
+			Confirm("Really send all your Bitcoins to %s?".format(user.wallet_btc.is), sendcoins("bitcoin")).toJsCmd.toString } +
+			"; return false;") &
+		".user_balance_nmc [onclick]" #> ({ if (user.balance_nmc.is == 0.0)
+			Alert("Sorry, not enough funds!").toJsCmd.toString else
+			Confirm("Really send all your Namecoins to %s?".format(user.wallet_nmc.is), sendcoins("namecoin")).toJsCmd.toString } +
+			"; return false;") &
+		".user_balance_slc [onclick]" #> ({ if (user.balance_slc.is == 0.0)
+			Alert("Sorry, not enough funds!").toJsCmd.toString else
+			Confirm("Really send all your Solidcoins to %s?".format(user.wallet_slc.is), sendcoins("solidcoin")).toJsCmd.toString } +
+			"; return false;") &
 		".user_balance_btc *" #> "%.8f BTC".format(user.balance_btc.toFloat) &
 		".user_balance_nmc *" #> "%.8f NMC".format(user.balance_nmc.toFloat) &
 		".user_balance_slc *" #> "%.8f SLC".format(user.balance_slc.toFloat)
 
 	def wallet = {
-		val btcHandler = (SHtml.ajaxText(user.wallet_btc, updateBtcWallet(_), "style" -> "width:250px;") \\ "@onblur").toString.replaceAll("this.value", "\\$('.user_wallet_btc').val()")
-		val nmcHandler = (SHtml.ajaxText(user.wallet_nmc, updateNmcWallet(_), "style" -> "width:250px;") \\ "@onblur").toString.replaceAll("this.value", "\\$('.user_wallet_nmc').val()")
-		val slcHandler = (SHtml.ajaxText(user.wallet_slc, updateSlcWallet(_), "style" -> "width:250px;") \\ "@onblur").toString.replaceAll("this.value", "\\$('.user_wallet_slc').val()")
+		val btcHandler = (SHtml.ajaxText(user.wallet_btc, updateBtcWallet(_), "style" -> "width:250px;")
+			\\ "@onblur").toString.replaceAll("this.value", "\\$('.user_wallet_btc').val()")
+		val nmcHandler = (SHtml.ajaxText(user.wallet_nmc, updateNmcWallet(_), "style" -> "width:250px;")
+			\\ "@onblur").toString.replaceAll("this.value", "\\$('.user_wallet_nmc').val()")
+		val slcHandler = (SHtml.ajaxText(user.wallet_slc, updateSlcWallet(_), "style" -> "width:250px;")
+			\\ "@onblur").toString.replaceAll("this.value", "\\$('.user_wallet_slc').val()")
 
 		".user_wallet_btc_btn [onclick]" #> "javascript:%s".format(btcHandler) &
 		".user_wallet_nmc_btn [onclick]" #> "javascript:%s".format(nmcHandler) &

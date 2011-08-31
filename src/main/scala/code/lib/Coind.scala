@@ -28,7 +28,7 @@
  */
 
 package code
-package model
+package lib
 
 import net.liftweb.mapper._
 import net.liftweb.util._
@@ -45,12 +45,21 @@ case class SlcCmd(cmd: String) extends CoindCommand
 
 object Coind {
 
-	def run(cmd: CoindCommand): String = cmd match {
-		case BtcCmd(c: String) => execp("bitcoind "+c)._2.mkString("\r\n")
-		case NmcCmd(c: String) => execp("namecoind "+c)._2.mkString("\r\n")
-		case SlcCmd(c: String) => execp("solidcoind "+c)._2.mkString("\r\n")
-		case _ => println("Huh???"); ""
+	def call(cmd: CoindCommand): (Boolean, String) = {
+		def callCmd(cmdStr: String) = {
+			val ret = execp(cmdStr)
+			((ret._1 == 0), ret._2.mkString("\r\n"))
+		}
+
+		cmd match {
+			case BtcCmd(c: String) => callCmd("bitcoind "+c)
+			case NmcCmd(c: String) => callCmd("namecoind "+c)
+			case SlcCmd(c: String) => callCmd("solidcoind "+c)
+			case _ => println("Huh???"); (false, "")
+		}
 	}
+
+	def run(cmd: CoindCommand): String = call(cmd)._2
 
 	def parse(a: String) = Json.parse(a)
 }

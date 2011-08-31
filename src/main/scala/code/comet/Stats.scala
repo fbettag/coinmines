@@ -109,6 +109,7 @@ object StatCollector extends LiftActor {
 	def currentDate = DateTimeHelpers.getDate
 	def invalidDate = currentDate.minusMinutes(1).minusSeconds(1)
 	def shortInvalidDate = currentDate.minusSeconds(30)
+	def transactionFee = 0.02
 
 	private var globalReply =
 		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0))
@@ -131,7 +132,7 @@ object StatCollector extends LiftActor {
 			case "solidcoin" => user.balances_slc
 		}
 
-		balances.filter(!balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble }
+		balances.filter(!balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble } - transactionFee
 	}
 
 	private def unconfirmedReward(user: User, network: String) = {
@@ -141,7 +142,7 @@ object StatCollector extends LiftActor {
 			case "solidcoin" => user.balances_slc
 		}
 
-		balances.filter(balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble }
+		balances.filter(balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble } - transactionFee
 	}
 
 	private def reward(donate: Double, network: String, current: Long, total: Long) = {
@@ -155,7 +156,7 @@ object StatCollector extends LiftActor {
 		val calcTotal = total
 		val poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
 
-		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / calcTotal.toDouble) * current.toDouble) * (1-(donate.toDouble/100.0))
+		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / calcTotal.toDouble) * current.toDouble) * (1-(donate.toDouble/100.0)) - transactionFee
 	}
 
 

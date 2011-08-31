@@ -51,7 +51,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	//override def lostPasswordMenuLoc: Box[Menu] = Empty
 	//override def resetPasswordMenuLoc: Box[Menu] = Empty
 
-	object loginReferer extends SessionVar("/stats")
+	object loginReferer extends SessionVar("/account")
 
 	override def homePage = {
 		var ret = loginReferer
@@ -60,7 +60,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	}
 
 	override def login = {
-		for (r <- S.referer if loginReferer.is == "/stats") loginReferer.set(r)
+		for (r <- S.referer if loginReferer.is == "/account") loginReferer.set(r)
 		super.login
 	}
 
