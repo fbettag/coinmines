@@ -36,9 +36,16 @@ import net.liftweb.mapper._
 import net.liftweb.util._
 import net.liftweb.common._
 
+import code.lib._
+
 object AccountBalance extends AccountBalance with LongKeyedMetaMapper[AccountBalance] {
 	override def dbTableName = "account_balances"
+
+	def payoutBtc = this.findAll(By_<(this.balance, 0.0), By(this.network, "bitcoin")).foldLeft(0.0) { _ + _.balance.toDouble }
+	def payoutNmc = this.findAll(By_<(this.balance, 0.0), By(this.network, "namecoin")).foldLeft(0.0) { _ + _.balance.toDouble }
+	def payoutSlc = this.findAll(By_<(this.balance, 0.0), By(this.network, "solidcoin")).foldLeft(0.0) { _ + _.balance.toDouble }
 }
+
 
 class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 	def getSingleton = AccountBalance
@@ -78,5 +85,20 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 		override def dbNotNull_? = true
 		override def dbIndexed_? = true
 	}
+
+	def isEligible: Boolean = {
+		val donatePercent: Double = User.find(By(User.id, this.user.is)) match {
+			case Full(u: User) => u.donatePercent.is.toDouble
+			case _ => 0.0
+		}
+
+		if (DateTimeHelpers.getDate(this.timestamp.is).isBefore(DateTimeHelpers.getDate.minusHours(12)))
+			return true
+		if (DateTimeHelpers.getDate(this.timestamp.is).isAfter(DateTimeHelpers.getDate.minusHours(12)) && donatePercent >= 2.0)
+			return true
+
+		false
+	}
+
 
 }

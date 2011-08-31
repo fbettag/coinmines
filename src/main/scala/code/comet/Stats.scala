@@ -115,50 +115,6 @@ object StatCollector extends LiftActor {
 		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0))
 	private var userReplies: Map[String, StatsUserReply] = Map()
 	
-	def balanceIsEligible(u: User, b: AccountBalance): Boolean = {
-		if (DateTimeHelpers.getDate(b.timestamp).isBefore(currentDate.minusHours(24)))
-			return true
-		
-		if (DateTimeHelpers.getDate(b.timestamp).isAfter(currentDate.minusHours(24)) && u.donatePercent >= 2.0)
-			return true
-
-		false
-	}
-
-	private def accountBalance(user: User, network: String) = {
-		val balances = network match {
-			case "bitcoin" => user.balances_btc
-			case "namecoin" => user.balances_nmc
-			case "solidcoin" => user.balances_slc
-		}
-
-		balances.filter(!balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble } - transactionFee
-	}
-
-	private def unconfirmedReward(user: User, network: String) = {
-		val balances = network match {
-			case "bitcoin" => user.balances_btc
-			case "namecoin" => user.balances_nmc
-			case "solidcoin" => user.balances_slc
-		}
-
-		balances.filter(balanceIsEligible(user, _)).foldLeft(0.0) { _ + _.balance.toDouble } - transactionFee
-	}
-
-	private def reward(donate: Double, network: String, current: Long, total: Long) = {
-		val coins = network match {
-			case "bitcoin" => 50.00
-			case "namecoin" => 50.00
-			case "solidcoin" => 32.00
-			case _ => 0.0
-		}
-
-		val calcTotal = total
-		val poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
-
-		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / calcTotal.toDouble) * current.toDouble) * (1-(donate.toDouble/100.0)) - transactionFee
-	}
-
 
 	/** Jobs **/
 	private def cleanupJob {
@@ -218,13 +174,12 @@ object StatCollector extends LiftActor {
 						}
 
 						// reward
-						val rew = reward(user.donatePercent.toDouble, network, shares, shareCount)
+						val rew = user.reward(network, shares, shareCount)
 						AccountBalance.create.user(user.id.is).network(network).balance(rew).save
-						val totalBalance = accountBalance(user, network)
 						network match {
-							case "bitcoin" => user.balance_btc(totalBalance)
-							case "namecoin" => user.balance_nmc(totalBalance)
-							case "solidcoin" => user.balance_slc(totalBalance)
+							case "bitcoin" => user.balance_btc(user.balanceBtcDB)
+							case "namecoin" => user.balance_nmc(user.balanceNmcDB)
+							case "solidcoin" => user.balance_slc(user.balanceSlcDB)
 						}
 
 						user.save
@@ -315,18 +270,18 @@ object StatCollector extends LiftActor {
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_btc },
 						user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
-						reward(user.donatePercent.toDouble, "bitcoin", btcShares, getGlobal.bitcoin.shares),
-						unconfirmedReward(user, "bitcoin")),
+						user.rewardBtc(btcShares, getGlobal.bitcoin.shares),
+						user.unconfirmedBtc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_nmc },
 						user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
-						reward(user.donatePercent.toDouble, "namecoin", nmcShares, getGlobal.namecoin.shares),
-						unconfirmedReward(user, "namecoin")),
+						user.rewardNmc(nmcShares, getGlobal.namecoin.shares),
+						user.unconfirmedNmc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_slc },
 						user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
-						reward(user.donatePercent.toDouble, "solidcoin", slcShares, getGlobal.solidcoin.shares),
-						unconfirmedReward(user, "solidcoin")),
+						user.rewardSlc(slcShares, getGlobal.solidcoin.shares),
+						user.unconfirmedSlc),
 					getGlobal)
 				userReplies += (user.email.is -> repl)
 				repl
@@ -358,9 +313,9 @@ object StatCollector extends LiftActor {
 			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(10).toDate)).toInt
 
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
-				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, 0.0), // globalPayoutBtc
-				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, 0.0), // globalPayoutNmc
-				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, 0.0)) // globalPayoutSlc
+				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, AccountBalance.payoutBtc),
+				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, AccountBalance.payoutNmc),
+				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc))
 		}
 		globalReply
 	}
@@ -370,9 +325,6 @@ object StatCollector extends LiftActor {
 class StatComet extends CometActor {
 	override def defaultPrefix = Full("stat")
   
-	// Redraw every Minute
-	ActorPing.schedule(this, Tick, 1 second)
-
 	// If this actor is not used for 2 minutes, destroy it
 	override def lifespan: Box[TimeSpan] = Full(2 minutes)
 
@@ -386,7 +338,7 @@ class StatComet extends CometActor {
 
 		case a: StatsGlobalReply =>
 			partialUpdate(Replace("thestats", cssSel(a).apply(defaultHtml)))
-			ActorPing.schedule(this, Tick, 100 seconds) 
+			ActorPing.schedule(this, Tick, 60 seconds) 
 
 		case a: StatsUserReply =>
 			partialUpdate(Replace("thestats", cssSel(a).apply(defaultHtml)))
@@ -398,7 +350,6 @@ class StatComet extends CometActor {
 		<span id="thestats"/>
 	}
 
-	def hashrate = 0
 	def cssSel(r: StatsUserReply): CssSel =
 		"#workerlist [style]" #> (if (r.hashrate > 0.000) "" else "display: none") &
 		".miner_row *" #> r.user.reload.workers.map(w => {
@@ -458,6 +409,34 @@ class StatComet extends CometActor {
 			".blocks_time *" #> s.timestamp.toString &
 			".blocks_shares *" #> s.shares.toString
 		)
+
+}
+
+
+class GigahashComet extends CometActor {
+	override def defaultPrefix = Full("ghstat")
+  
+	// If this actor is not used for 2 minutes, destroy it
+	override def lifespan: Box[TimeSpan] = Full(2 minutes)
+
+	override def lowPriority = {
+		case Tick => StatCollector ! StatsGatherGlobal(this)
+
+		case a: StatsGlobalReply =>
+			partialUpdate(Replace("ghstats", cssSel(a).apply(defaultHtml)))
+			ActorPing.schedule(this, Tick, 60 seconds) 
+	}
+
+	def render = {
+		this ! Tick
+		<span id="ghstats"/>
+	}
+
+	def cssSel(r: StatsGlobalReply): CssSel =
+		"#gigahash_total *" #> "%.1f GH/sec".format(r.hashrate / 1000.0) &
+		"#gigahash_btc *" #> "%.1f GH/sec".format(r.bitcoin.hashrate / 1000.0) &
+		"#gigahash_nmc *" #> "%.1f GH/sec".format(r.namecoin.hashrate / 1000.0) &
+		"#gigahash_slc *" #> "%.1f GH/sec".format(r.solidcoin.hashrate / 1000.0)
 
 }
 

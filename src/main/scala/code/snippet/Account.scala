@@ -112,18 +112,21 @@ class Account extends Loggable {
 	def balance =
 		".user_balance_btc [onclick]" #> ({
 			if (user.wallet_btc.is == "")		Alert("Sorry, please set a wallet!").toJsCmd.toString
-			else if (user.balance_btc.is == 0.0)	Alert("Sorry, not enough funds!").toJsCmd.toString
-			else Confirm("Really withdraw all your Bitcoins?", sendcoins("bitcoin")).toJsCmd.toString } +
+			else if (user.balance_btc.is < 0.1)	Alert("Sorry, not enough funds!").toJsCmd.toString
+			else Alert("We're working on payout right now!\nBut we need to make sure it works first!").toJsCmd.toString } +
+			//else Confirm("Really withdraw all your Bitcoins?", sendcoins("bitcoin")).toJsCmd.toString } +
 			"; return false;") &
 		".user_balance_nmc [onclick]" #> ({
 			if (user.wallet_nmc.is == "")		Alert("Sorry, please set a wallet!").toJsCmd.toString
-			else if (user.balance_nmc.is == 0.0)	Alert("Sorry, not enough funds!").toJsCmd.toString
-			else Confirm("Really withdraw all your Namecoins?", sendcoins("namecoin")).toJsCmd.toString } +
+			else if (user.balance_nmc.is < 0.1)	Alert("Sorry, not enough funds!").toJsCmd.toString
+			else Alert("We're working on payout right now!\nBut we need to make sure it works first!").toJsCmd.toString } +
+			//else Confirm("Really withdraw all your Namecoins?", sendcoins("namecoin")).toJsCmd.toString } +
 			"; return false;") &
 		".user_balance_slc [onclick]" #> ({
 			if (user.wallet_slc.is == "")		Alert("Sorry, please set a wallet!").toJsCmd.toString
-			else if (user.balance_slc.is == 0.0)	Alert("Sorry, not enough funds!").toJsCmd.toString
-			else Confirm("Really withdraw all your Solidcoins?", sendcoins("solidcoin")).toJsCmd.toString } +
+			else if (user.balance_slc.is < 0.1)	Alert("Sorry, not enough funds!").toJsCmd.toString
+			else Alert("We're working on payout right now!\nBut we need to make sure it works first!").toJsCmd.toString } +
+			//else Confirm("Really withdraw all your Solidcoins?", sendcoins("solidcoin")).toJsCmd.toString } +
 			"; return false;") &
 		".user_balance_btc *" #> "%.8f BTC".format(user.balance_btc.toFloat) &
 		".user_balance_nmc *" #> "%.8f NMC".format(user.balance_nmc.toFloat) &

@@ -188,18 +188,36 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 	
 	private def balances(network: String) = AccountBalance.findAll(By(AccountBalance.user, this.id), By(AccountBalance.network, network))
 	def balances = AccountBalance.findAll(By(AccountBalance.user, this.id))
-	def balances_btc = balances("bitcoin")
-	def balances_nmc = balances("namecoin")
-	def balances_slc = balances("solidcoin")
+
+	def balancesBtc = balances("bitcoin")
+	def balancesNmc = balances("namecoin")
+	def balancesSlc = balances("solidcoin")
+
+	def balanceBtcDB = balancesBtc.filter(_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+	def balanceNmcDB = balancesNmc.filter(_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+	def balanceSlcDB = balancesSlc.filter(_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+
+	def unconfirmedBtc = balancesBtc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+	def unconfirmedNmc = balancesNmc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+	def unconfirmedSlc = balancesSlc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+
+	def reward(network: String, current: Long, total: Long) = {
+		val coins = network match {
+			case "bitcoin" => 50.00
+			case "namecoin" => 50.00
+			case "solidcoin" => 32.00
+			case _ => 0.0
+		}
+
+		val poolfee = try { Props.get("pool.fee").openOr(0).toString.toDouble } catch { case _ => 0.0 }
+
+		((coins.toDouble * (1.0 - (poolfee.toDouble / 100.0)) / total.toDouble) * current.toDouble) * (1-(this.donatePercent.is.toDouble/100.0))
+	}
+
+	def rewardBtc(current: Long, total: Long) = reward("bitcoin", current, total)
+	def rewardNmc(current: Long, total: Long) = reward("namecoin", current, total)
+	def rewardSlc(current: Long, total: Long) = reward("solidcoin", current, total)
 
 	def workers: List[PoolWorker] = PoolWorker.findAll(By(PoolWorker.user, this.id),OrderBy(PoolWorker.username, Ascending))
 	def shares: List[Share] = Share.findAll(By(Share.username, this.email))
-
-	def hashrate = 0.0
-	/*
-	Float = Redis.get("hashrate::%s".format(this.id)) match {
-		case null => 0
-		case a: String => try { a.toFloat } catch { case _ => 0 }
-	}*/
-
 }
