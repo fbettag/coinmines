@@ -118,6 +118,9 @@ object StatCollector extends LiftActor {
 
 	/** Jobs **/
 	private def cleanupJob {
+		// Update won shares we don't have info for
+		WonShare.findAll(By(WonShare.blockNumber, 0L)).map(ws => ws.fetchInfo)
+		
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
 
 		// Recalculate balance
@@ -162,7 +165,6 @@ object StatCollector extends LiftActor {
 		parseTransactions("namecoin", NmcCmd("listtransactions"))
 		parseTransactions("solidcoin", SlcCmd("listtransactions"))
 
-		WonShare.findAll(By(WonShare.blockNumber, 0L)).map(ws => ws.fetchInfo)
 	}
 
 	private def rewardJob {
