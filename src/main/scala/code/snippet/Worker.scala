@@ -55,7 +55,7 @@ class Worker extends Loggable {
 	
 	/* helpers */
 	def addWorker(name: String) = {
-		var worker = PoolWorker.create.user(user).username(user.email + "_" + stripName(name))
+		var worker = PoolWorker.create.user(user).username(user.name + "_" + stripName(name))
 		logger.info("New Worker %s - Name: %s".format(worker.id, worker.username))
 		worker.saveWithJsFeedback("#new_worker") &
 		js.jquery.JqJsCmds.AppendHtml("worker_list", buildRow(worker))
@@ -63,7 +63,7 @@ class Worker extends Loggable {
 
 	def updateName(worker: PoolWorker, name: String) = {
 			logger.info("Worker %s - New Name: %s".format(worker.id, stripName(name)))
-			worker.username(user.email + "_" + name.replaceAll("[^a-zA-Z0-9_-]+", "")).saveWithJsFeedback("tr#row_%s".format(worker.id))
+			worker.username(user.name + "_" + name.replaceAll("[^a-zA-Z0-9_-]+", "")).saveWithJsFeedback("tr#row_%s".format(worker.id))
 	}
 
 	def updatePassword(worker: PoolWorker, password: String) = {
@@ -85,7 +85,7 @@ class Worker extends Loggable {
 
 	def buildRow(worker: PoolWorker) = <xml:group>
 		<tr id={"row_%s".format(worker.id)}>
-			<td>{user.email}_{SHtml.ajaxText(worker.username.replaceFirst("^%s_".format(user.email), ""), updateName(worker, _))}</td>
+			<td>{user.name}_{SHtml.ajaxText(worker.username.replaceFirst("^%s_".format(user.name), ""), updateName(worker, _))}</td>
 			<td>{worker.lasthashString}</td>
 			<td>{SHtml.ajaxText(worker.password, updatePassword(worker, _), "class" -> "worker_password", "type" -> "password")}</td>
 			<td>{a(() => deleteWorker(worker), <span>{S.??("delete")}</span>)}</td>

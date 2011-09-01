@@ -41,7 +41,7 @@ import lib._
 object User extends User with MetaMegaProtoUser[User] {
 	override def dbTableName = "users" // define the DB table name
 	override def fieldOrder = List(id, email, locale, timezone, password, donatePercent, locked)
-	override def signupFields = List(email, locale, timezone, password)
+	override def signupFields = List(email, name, locale, timezone, password)
 
 	override val basePath: List[String] = "users" :: Nil
 	override def skipEmailValidation = true
@@ -90,13 +90,22 @@ object User extends User with MetaMegaProtoUser[User] {
 class User extends MegaProtoUser[User] with JsEffects[User] {
 	def getSingleton = User
 
+	private def toWallet(a: String) = a.replaceAll("[^a-zA-Z0-9]+", "")
+	private def toName(a: String) = a.replaceAll("[^a-zA-Z0-9_@.-]+", "")
+
 	object locked extends MappedBoolean(this) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
 		override def defaultValue = false
 	}
 
-	private def toWallet(a: String) = a.replaceAll("[^a-zA-Z0-9]+", "")
+	object name extends MappedString(this, 64) {
+		override def dbIndexed_? = true
+		override def dbNotNull_? = true
+		override def validations = valUnique("Name must be unique!") _ :: super.validations
+		override def setFilter = trim _ :: toLower _ :: toName _ :: super.setFilter
+	}
+
 
 	object wallet_btc extends MappedString(this, 255) {
 		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
@@ -200,6 +209,16 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 	def unconfirmedBtc = balancesBtc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
 	def unconfirmedNmc = balancesNmc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
 	def unconfirmedSlc = balancesSlc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
+
+	private def payoutFor(network: String) = {
+		val num = AccountBalance.findAll(By(AccountBalance.paid, true), By(AccountBalance.network, network),
+			By(AccountBalance.user, this.id)).foldLeft(0.0) { _ + _.balance.toDouble } * (-1)
+		if (num == 0.0) 0.0 else num // 0.0 == -0.0 => true
+	}
+
+	def payoutBtc = payoutFor("bitcoin")
+	def payoutNmc = payoutFor("namecoin")
+	def payoutSlc = payoutFor("solidcoin")
 
 	def reward(network: String, current: Long, total: Long) = {
 		val coins = network match {

@@ -33,8 +33,12 @@ package comet
 import net.liftweb.http._
 import net.liftweb.actor._
 import net.liftweb.http.S._
-import net.liftweb.http.SHtml._
+import net.liftweb.http.js._
+import net.liftweb.http.js.JE._
 import net.liftweb.http.js.JsCmds._
+import net.liftweb.http.js.JE.JsRaw
+import net.liftweb.http.js.JsCmd
+import net.liftweb.http.SHtml._
 import net.liftweb.mapper._
 import net.liftweb.util._
 import net.liftweb.util.Helpers._
@@ -46,20 +50,22 @@ import java.math.BigInteger
 
 import scala.xml._
 import scala.collection.mutable.Map
+import scala.collection.immutable.HashMap
 
 import lib._
 import model._
 
-case object Tick
+case class Tick(reschedule: Boolean)
 
 sealed trait StatsGatherCommand
 case class StatsCleanup extends StatsGatherCommand
 case class StatsReward(repeat: Boolean) extends StatsGatherCommand
-case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
-case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
+case class StatsGatherGlobal(target: CometActor, reschedule: Boolean) extends StatsGatherCommand
+case class StatsGatherUser(target: CometActor, user: User, reschedule: Boolean) extends StatsGatherCommand
 
 sealed trait StatsReply
-case class StatsUserCoinReply(hashrate: Int, total: Long, round: Long, stale: Long, reward: Double, rewardUnconfirmed: Double) extends StatsReply
+case class StatsUserCoinReply(hashrate: Int, total: Long, round: Long, stale: Long,
+	reward: Double, rewardUnconfirmed: Double, totalPayout: Double) extends StatsReply
 case class StatsUserReply(
 	user: User, lastUpdate: DateTime,
 	hashrate: Int, total: Long, stale: Long,
@@ -70,13 +76,11 @@ case class StatsGlobalCoinReply(hashrate: Int, shares: Long, payout: Double) ext
 case class StatsGlobalReply(
 	lastUpdate: DateTime,
 	hashrate: Int, workers: Int,
-	bitcoin: StatsGlobalCoinReply, namecoin: StatsGlobalCoinReply, solidcoin: StatsGlobalCoinReply) extends StatsReply
+	bitcoin: StatsGlobalCoinReply, namecoin: StatsGlobalCoinReply, solidcoin: StatsGlobalCoinReply,
+	reschedule: Boolean) extends StatsReply
 
 
 object StatCollector extends LiftActor {
-
-	def boot() {
-	}
 
 	val calculateRewards = Props.get("pool.calculate") match {
 			case Full(a: String) => a.toBoolean
@@ -84,25 +88,25 @@ object StatCollector extends LiftActor {
 	}
 
 	if (calculateRewards)
-	ActorPing.schedule(this, StatsReward(true), 1 second)
+		ActorPing.schedule(this, StatsReward(true), 1 second)
 	
-	ActorPing.schedule(this, Tick, 1 second)
+	ActorPing.schedule(this, Tick(true), 1 second)
 	ActorPing.schedule(this, StatsCleanup, 5 minutes)
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
-			a.target ! getGlobal
+			a.target ! getGlobal(a.reschedule)
 		case a: StatsGatherUser =>
-			a.target ! getUser(a.user)
+			a.target ! getUser(a.user, a.reschedule)
 		case a: StatsCleanup =>
 			cleanupJob
 			ActorPing.schedule(this, a, 10 minute)
 		case a: StatsReward =>
 			rewardJob
 			if (a.repeat) ActorPing.schedule(this, a, 10 seconds)
-		case Tick =>
+		case a: Tick =>
 			minuteJob
-			ActorPing.schedule(this, Tick, 1 minute)
+			ActorPing.schedule(this, a, 1 minute)
 		case _ =>
 	}
 
@@ -112,7 +116,7 @@ object StatCollector extends LiftActor {
 	def transactionFee = 0.02
 
 	private var globalReply =
-		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0))
+		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), false)
 	private var userReplies: Map[String, StatsUserReply] = Map()
 	
 
@@ -121,9 +125,9 @@ object StatCollector extends LiftActor {
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
 
 		// Recalculate balance
-		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB))
+		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
 
-		def updateTransaction(network: String, t: Map[String, Any]) =
+		def updateTransaction(network: String, t: HashMap[String, Any]) =
 			t.get("txid") match {
 				case Some(a: String) if (a != "") =>
 					WonShare.find(By(WonShare.txid, a)) match {
@@ -148,13 +152,19 @@ object StatCollector extends LiftActor {
 				case _ => println("no txid in transaction :(")
 			}
 
-		List(("bitcoin", BtcCmd("listtransactions")), ("namecoin", NmcCmd("listtransactions")), ("solidcoin", SlcCmd("listtransactions"))).map(s => {
-			Coind.parse(Coind.run(s._2)) match {
-				case a: List[Map[String, Any]] =>
-					a.filter(d => d.get("category").get.toString.matches("generate|immature")).map(d => updateTransaction(s._1, d))
+		def parseTransactions(network: String, cmd: CoindCommand) {
+			Coind.parse(Coind.run(cmd)) match {
+				case a: List[HashMap[String, Any]] =>
+					a.map(d => d).
+					  filter(d => d.get("category").get.toString.matches("generate|immature")).
+					  map(d => updateTransaction(network, d))
 				case _ => println("not the expected list")
 			}
-		})
+		}
+
+		parseTransactions("bitcoin", BtcCmd("listtransactions"))
+		parseTransactions("namecoin", NmcCmd("listtransactions"))
+		parseTransactions("solidcoin", SlcCmd("listtransactions"))
 
 		WonShare.findAll(By(WonShare.blockNumber, 0L)).map(ws => ws.fetchInfo)
 	}
@@ -280,7 +290,7 @@ object StatCollector extends LiftActor {
 	}
 
 	/* reload needed data */
-	private def getUser(user: User): StatsUserReply = {
+	private def getUser(user: User, reschedule: Boolean): StatsUserReply = {
 	
 		def shareQuery(network: String) =
 			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.email.is)))
@@ -306,26 +316,29 @@ object StatCollector extends LiftActor {
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_btc },
 						user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
-						user.rewardBtc(btcShares, getGlobal.bitcoin.shares),
-						user.unconfirmedBtc),
+						user.rewardBtc(btcShares, getGlobal(reschedule).bitcoin.shares),
+						user.unconfirmedBtc,
+						user.payoutBtc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_nmc },
 						user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
-						user.rewardNmc(nmcShares, getGlobal.namecoin.shares),
-						user.unconfirmedNmc),
+						user.rewardNmc(nmcShares, getGlobal(reschedule).namecoin.shares),
+						user.unconfirmedNmc,
+						user.payoutNmc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_slc },
 						user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
-						user.rewardSlc(slcShares, getGlobal.solidcoin.shares),
-						user.unconfirmedSlc),
-					getGlobal)
+						user.rewardSlc(slcShares, getGlobal(reschedule).solidcoin.shares),
+						user.unconfirmedSlc,
+						user.payoutSlc),
+					getGlobal(reschedule))
 				userReplies += (user.email.is -> repl)
 				repl
 			}
 		}
 	}
 
-	private def getGlobal: StatsGlobalReply = {
+	private def getGlobal(reschedule: Boolean): StatsGlobalReply = {
 		if (globalReply.lastUpdate.isBefore(shortInvalidDate)) {
 			/* Shares */
 			def sharesQuery(network: String) = Share.count(By(Share.network, network))
@@ -351,7 +364,8 @@ object StatCollector extends LiftActor {
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
 				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, AccountBalance.payoutBtc),
 				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, AccountBalance.payoutNmc),
-				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc))
+				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc),
+				reschedule)
 		}
 		globalReply
 	}
@@ -360,29 +374,39 @@ object StatCollector extends LiftActor {
 
 class StatComet extends CometActor {
 	override def defaultPrefix = Full("stat")
+	
+	this ! Tick(true)
   
 	// If this actor is not used for 2 minutes, destroy it
 	override def lifespan: Box[TimeSpan] = Full(2 minutes)
 
 	override def lowPriority = {
-		case Tick =>
+		case a: Tick =>
 			val msg: StatsGatherCommand = User.currentUser match {
-				case Full(u: User) => StatsGatherUser(this, u)
-				case _ => StatsGatherGlobal(this)
+				case Full(u: User) => StatsGatherUser(this, u, a.reschedule)
+				case _ => StatsGatherGlobal(this, a.reschedule)
 			}
 			StatCollector ! msg
 
 		case a: StatsGlobalReply =>
-			partialUpdate(Replace("thestats", cssSel(a).apply(defaultHtml)))
-			ActorPing.schedule(this, Tick, 60 seconds) 
+			partialUpdate(
+				Replace("thestats", cssSel(a).apply(defaultHtml)) &
+				JsRaw("$('.last_updated').effect('highlight', 1000)").cmd
+			)
+			if (a.reschedule)
+				ActorPing.schedule(this, Tick(true), 60 seconds) 
 
 		case a: StatsUserReply =>
-			partialUpdate(Replace("thestats", cssSel(a).apply(defaultHtml)))
-			ActorPing.schedule(this, Tick, 30 seconds) 
+			partialUpdate(
+				Replace("thestats", cssSel(a).apply(defaultHtml)) &
+				JsRaw("$('.last_updated').effect('highlight', 1000)").cmd
+			)
+			if (a.global.reschedule)
+				ActorPing.schedule(this, Tick(true), 30 seconds) 
 	}
 
 	def render = {
-		this ! Tick
+		this ! Tick(false)
 		<span id="thestats"/>
 	}
 
@@ -407,7 +431,7 @@ class StatComet extends CometActor {
 		".user_btc_balance *" #> "%.8f BTC".format(r.user.balance_btc.is) &
 		".user_btc_reward *" #> "%.8f BTC".format(r.bitcoin.reward) &
 		".user_btc_unconfirmed *" #> "%.8f BTC".format(r.bitcoin.rewardUnconfirmed) &
-		".user_btc_payout *" #> "%.8f BTC".format(0.toFloat) &
+		".user_btc_payout *" #> "%.8f BTC".format(r.bitcoin.totalPayout) &
 		".user_nmc_hashrate *" #> "%s MH/sec".format(r.namecoin.hashrate)  &
 		".user_nmc_shares_total *" #> r.namecoin.total &
 		".user_nmc_shares_round *" #> r.namecoin.round &
@@ -415,7 +439,7 @@ class StatComet extends CometActor {
 		".user_nmc_balance *" #> "%.8f NMC".format(r.user.balance_nmc.is) &
 		".user_nmc_reward *" #> "%.8f NMC".format(r.namecoin.reward) &
 		".user_nmc_unconfirmed *" #> "%.8f NMC".format(r.namecoin.rewardUnconfirmed) &
-		".user_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
+		".user_nmc_payout *" #> "%.8f NMC".format(r.namecoin.totalPayout) &
 		".user_slc_hashrate *" #> "%s MH/sec".format(r.solidcoin.hashrate)  &
 		".user_slc_shares_total *" #> r.solidcoin.total &
 		".user_slc_shares_round *" #> r.solidcoin.round &
@@ -423,7 +447,7 @@ class StatComet extends CometActor {
 		".user_slc_balance *" #> "%.8f SLC".format(r.user.balance_slc.is) &
 		".user_slc_reward *" #> "%.8f SLC".format(r.solidcoin.reward) &
 		".user_slc_unconfirmed *" #> "%.8f SLC".format(r.solidcoin.rewardUnconfirmed) &
-		".user_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
+		".user_slc_payout *" #> "%.8f SLC".format(r.solidcoin.totalPayout) &
 		cssSel(r.global)
 
 	def cssSel(r: StatsGlobalReply): CssSel =
@@ -432,29 +456,19 @@ class StatComet extends CometActor {
 		".global_workers *" #> r.workers &
 		".global_btc_hashrate *" #> "%.3f GH/sec".format(r.bitcoin.hashrate / 1000.0)  &
 		".global_btc_shares *" #> r.bitcoin.shares &
-		".global_btc_payout *" #> "%.8f BTC".format(0.toFloat) &
+		".global_btc_payout *" #> "%.8f BTC".format(r.bitcoin.payout) &
 		".global_nmc_hashrate *" #> "%.3f GH/sec".format(r.namecoin.hashrate / 1000.0)  &
 		".global_nmc_shares *" #> r.namecoin.shares &
-		".global_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
+		".global_nmc_payout *" #> "%.8f NMC".format(r.namecoin.payout) &
 		".global_slc_hashrate *" #> "%.3f GH/sec".format(r.solidcoin.hashrate / 1000.0)  &
 		".global_slc_shares *" #> r.solidcoin.shares &
-		".global_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
+		".global_slc_payout *" #> "%.8f SLC".format(r.solidcoin.payout) &
 		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(50)).map(s =>
 			".blocks_network *" #> s.network.is &
 			".blocks_time *" #> s.timestamp.toString &
 			".blocks_shares *" #> s.shares.toString &
 			".blocks_confirms *" #> s.confirmations.toString &
-			".blocks_id *" #> (s.hash.is match {
-				case "" => if (s.blockNumber == null) Text("tbd") else Text(s.blockNumber.is.toString)
-				case _ => s.network.is match {
-					case "bitcoin" =>
-						<a href={"http://blockexplorer.com/block/" + s.hash.is} target="_blank">{s.blockNumber.toString}</a>
-					case "namecoin" =>
-						Text(s.blockNumber.toString)
-					case "solidcoin" =>
-						<a href={"http://solidcoin.whmcr.co.uk/block/" + s.hash.is} target="_blank">{s.blockNumber.toString}</a>
-				}
-			})
+			".blocks_id *" #> s.blockLink
 		)
 
 }
@@ -462,20 +476,26 @@ class StatComet extends CometActor {
 
 class GigahashComet extends CometActor {
 	override def defaultPrefix = Full("ghstat")
-  
+
+	this ! Tick(true)
+
 	// If this actor is not used for 2 minutes, destroy it
 	override def lifespan: Box[TimeSpan] = Full(2 minutes)
 
 	override def lowPriority = {
-		case Tick => StatCollector ! StatsGatherGlobal(this)
+		case a: Tick => StatCollector ! StatsGatherGlobal(this, a.reschedule)
 
 		case a: StatsGlobalReply =>
-			partialUpdate(Replace("ghstats", cssSel(a).apply(defaultHtml)))
-			ActorPing.schedule(this, Tick, 60 seconds) 
+			partialUpdate(
+				Replace("ghstats", cssSel(a).apply(defaultHtml)) &
+				JsRaw("$('#ghstats').effect('highlight', 1000)").cmd
+			)
+			if (a.reschedule)
+				ActorPing.schedule(this, Tick(true), 60 seconds) 
 	}
 
 	def render = {
-		this ! Tick
+		this ! Tick(false)
 		<span id="ghstats"/>
 	}
 

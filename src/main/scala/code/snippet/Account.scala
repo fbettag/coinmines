@@ -62,6 +62,7 @@ class Account extends Loggable {
 	def updateNmcWallet(a: String) = { user.wallet_nmc(a).saveWithJsFeedback(".user_wallet_nmc") }
 	def updateSlcWallet(a: String) = { user.wallet_slc(a).saveWithJsFeedback(".user_wallet_slc") }
 	def updateEmail(a: String) = { user.email(a).saveWithJsFeedback(".user_details_email") }
+	def updateName(a: String) = { user.name(a).saveWithJsFeedback(".user_details_name") }
 
 	def updateDonation(donation: String) = {
 		var donatePercent = donation.replaceFirst(",", ".")
@@ -81,6 +82,13 @@ class Account extends Loggable {
 		user.saveWithJsFeedback("...")
 	}
 
+	def sendcoinsHandler(network: String): JsCmd = {
+		val handler = (SHtml.ajaxButton("sendcoins", () => this.sendcoins(network)) \\ "@onclick").toString.
+			replaceAll("&quot;", "'").
+			replaceAll("return false;+$", "")
+		JsRaw(handler).cmd
+	}
+
 	def sendcoins(network: String): JsCmd = {
 		var wallet = ""
 		var balance = 0.0
@@ -88,9 +96,9 @@ class Account extends Loggable {
 		var cssSelector = ""
 		var name = "BTC"
 		val fee = 0.02
+		val keepPercent: Double = 1.0 - (user.donatePercent / 100).toDouble
 
 		def doIt {
-			return println(cmd)
 			val res = Coind.call(cmd)
 			if (res._1) AccountBalance.create.
 				user(user).network(network).sendAddress(wallet).paid(true).
@@ -103,7 +111,7 @@ class Account extends Loggable {
 				cssSelector = ".user_balance_btc"
 				wallet = user.wallet_btc.is
 				balance = user.balanceBtcDB
-				cmd = BtcCmd("sendtoaddress %s %.8f".format(wallet, balance - fee))
+				cmd = BtcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
 				user.balance_btc(user.balanceBtcDB).save
 			case "namecoin" =>
@@ -111,7 +119,7 @@ class Account extends Loggable {
 				cssSelector = ".user_balance_nmc"
 				wallet = user.wallet_nmc.is
 				balance = user.balanceNmcDB
-				cmd = NmcCmd("sendtoaddress %s %.8f".format(wallet, balance - fee))
+				cmd = NmcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
 				user.balance_nmc(user.balanceNmcDB).save
 			case "solidcoin" =>
@@ -119,11 +127,10 @@ class Account extends Loggable {
 				cssSelector = ".user_balance_slc"
 				wallet = user.wallet_slc.is
 				balance = user.balanceSlcDB
-				cmd = SlcCmd("sendtoaddress %s %.8f".format(wallet, balance - fee))
+				cmd = SlcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
 				user.balance_slc(user.balanceSlcDB).save
 		}
-
 
 		logger.info("SENDING COINS %s: %.8f to %s".format(user.email.is, balance, wallet))
 		JsRaw("$('%s').text('%.8f %s')".format(cssSelector, balance, name)).cmd &
@@ -136,20 +143,17 @@ class Account extends Loggable {
 		".user_balance_btc [onclick]" #> ({
 			if (user.wallet_btc.is == "")		Alert("Sorry, please set a wallet!").toJsCmd.toString
 			else if (user.balance_btc.is < 0.1)	Alert("Sorry, not enough funds!").toJsCmd.toString
-			else Alert("We're working on payout right now!\nBut we need to make sure it works first!").toJsCmd.toString } +
-			//else Confirm("Really withdraw all your Bitcoins?", sendcoins("bitcoin")).toJsCmd.toString } +
+			else Confirm("Really withdraw all your Bitcoins?", sendcoinsHandler("bitcoin")).toJsCmd.toString } +
 			"; return false;") &
 		".user_balance_nmc [onclick]" #> ({
 			if (user.wallet_nmc.is == "")		Alert("Sorry, please set a wallet!").toJsCmd.toString
 			else if (user.balance_nmc.is < 0.1)	Alert("Sorry, not enough funds!").toJsCmd.toString
-			else Alert("We're working on payout right now!\nBut we need to make sure it works first!").toJsCmd.toString } +
-			//else Confirm("Really withdraw all your Namecoins?", sendcoins("namecoin")).toJsCmd.toString } +
+			else Confirm("Really withdraw all your Namecoins?", sendcoinsHandler("namecoin")).toJsCmd.toString } +
 			"; return false;") &
 		".user_balance_slc [onclick]" #> ({
 			if (user.wallet_slc.is == "")		Alert("Sorry, please set a wallet!").toJsCmd.toString
 			else if (user.balance_slc.is < 0.1)	Alert("Sorry, not enough funds!").toJsCmd.toString
-			else Alert("We're working on payout right now!\nBut we need to make sure it works first!").toJsCmd.toString } +
-			//else Confirm("Really withdraw all your Solidcoins?", sendcoins("solidcoin")).toJsCmd.toString } +
+			else Confirm("Really withdraw all your Solidcoins?", sendcoinsHandler("solidcoin")).toJsCmd.toString } +
 			"; return false;") &
 		".user_balance_btc *" #> "%.8f BTC".format(user.balance_btc.toFloat) &
 		".user_balance_nmc *" #> "%.8f NMC".format(user.balance_nmc.toFloat) &
@@ -166,30 +170,33 @@ class Account extends Loggable {
 		".user_wallet_btc_btn [onclick]" #> "javascript:%s".format(btcHandler) &
 		".user_wallet_nmc_btn [onclick]" #> "javascript:%s".format(nmcHandler) &
 		".user_wallet_slc_btn [onclick]" #> "javascript:%s".format(slcHandler) &
-		".user_wallet_btc [value]" #> user.wallet_btc &
-		".user_wallet_nmc [value]" #> user.wallet_nmc &
-		".user_wallet_slc [value]" #> user.wallet_slc
+		".user_wallet_btc [value]" #> user.wallet_btc.is &
+		".user_wallet_nmc [value]" #> user.wallet_nmc.is &
+		".user_wallet_slc [value]" #> user.wallet_slc.is
 	}
 
 	def details = {
+		val nameHandler = (SHtml.ajaxText(user.email, updateName(_), "style" -> "width:250px;") \\ "@onblur").toString.replaceAll("this.value", "\\$('.user_details_name').val()")
 		val emailHandler = (SHtml.ajaxText(user.email, updateEmail(_), "style" -> "width:250px;") \\ "@onblur").toString.replaceAll("this.value", "\\$('.user_details_email').val()")
 		val donationHandler = (SHtml.ajaxText("%.2f".format(user.donatePercent.toFloat), updateDonation(_), "style" -> "width:30px;") \\ "@onblur").toString.replaceAll("this.value", "\\$('.user_details_donation').val()")
 	
+		".user_details_name_btn [onclick]" #> "javascript:%s".format(nameHandler) &
 		".user_details_email_btn [onclick]" #> "javascript:%s".format(emailHandler) &
 		".user_details_donation_btn [onclick]" #> "javascript:%s".format(donationHandler) &
-		//".user_details_payoutlock" #> SHtml.ajaxCheckbox(user.payoutlock, updatePayoutlock(_)) &
-		//".user_details_idlewarning" #> SHtml.ajaxCheckbox(user.idlewarning, updateIdlewarning(_)) &
-		".user_details_email [value]" #> user.email &
-		".user_details_donation [value]" #> "%.2f".format(user.donatePercent.toFloat)
+		".user_details_payoutlock" #> SHtml.ajaxCheckbox(user.payoutlock, updatePayoutlock(_)) &
+		".user_details_idlewarning" #> SHtml.ajaxCheckbox(user.idlewarning, updateIdlewarning(_)) &
+		".user_details_email [value]" #> user.email.is &
+		".user_details_name [value]" #> user.name.is &
+		".user_details_donation [value]" #> "%.2f".format(user.donatePercent.is.toDouble)
 
 	}
 
 	def payments: CssSel = {
-		val balances = AccountBalance.findAll(By(AccountBalance.user, user.id.is), By_>(AccountBalance.balance, 0), OrderBy(AccountBalance.timestamp, Descending), MaxRows(50))
+		val balances = AccountBalance.findAll(By(AccountBalance.user, user.id.is), OrderBy(AccountBalance.timestamp, Descending), MaxRows(50))
 		if (balances.length == 0) return "*" #> ""
 
 		".payment_row *" #> balances.map(b =>
-			".payment_wallet *" #> b.sendAddress.is &
+			".payment_wallet *" #> b.transactionLink &
 			".payment_date *" #> b.timestamp.toString &
 			".payment_amount *" #> "%.8f %s".format(b.balance.is, b.network.is match {
 				case "bitcoin" => "BTC"

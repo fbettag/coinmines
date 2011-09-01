@@ -37,6 +37,9 @@
 		</span>
 
 		<div class="lift:Account.details bio">
+				<label>Name</label>
+				<input type="text" style="width:150px" class="user_details_name"/>
+				<input type="button" class="user_details_name_btn" value="save"/><br/><br/>
 				<label>E-Mail</label>
 				<input type="text" style="width:150px" class="user_details_email"/>
 				<input type="button" class="user_details_email_btn" value="save"/><br/><br/>
@@ -64,18 +67,19 @@
 	<div class="about vcard body lift:Account.payments">
 		<span class="primary">
 			<strong><a href="#" onclick="javascript:return false" class="fn url">Your Payments</a></strong><br/>
-			<span class="role">Your last 50 Transactions</span>
+			<span class="role">Last 50 Transactions</span>
 		</span>
 
-		<div class="bio">
-			<table>
+		<div class="bio" style="width:700px">
+			<br/>
+			<table style="width:100%">
 				<tr>
 					<th>Amount</th>
 					<th>Wallet</th>
 					<th>Date</th>
 				</tr>
 				<tr class="payment_row">
-					<td class="payment_amount">0.0000000 BTC</td>
+					<td class="payment_amount" style="text-align:right">0.0000000 BTC</td>
 					<td class="payment_wallet"></td>
 					<td class="payment_date"></td>
 				</tr>
@@ -108,7 +112,7 @@
 			<span class="role"></span>
 		</span>
 
-               	-o http://<span class="lift:Stats.hostname"></span>:PORT -u worker -p pass -I 7 -k phatk
+               	-o http://<span class="lift:Stats.hostname"></span>:PORT -u worker -p pass -I 7
 	</div>
 </section>
 

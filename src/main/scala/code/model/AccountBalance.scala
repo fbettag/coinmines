@@ -36,14 +36,19 @@ import net.liftweb.mapper._
 import net.liftweb.util._
 import net.liftweb.common._
 
+import scala.xml._
 import code.lib._
 
 object AccountBalance extends AccountBalance with LongKeyedMetaMapper[AccountBalance] {
 	override def dbTableName = "account_balances"
 
-	def payoutBtc = this.findAll(By_<(this.balance, 0.0), By(this.network, "bitcoin")).foldLeft(0.0) { _ + _.balance.toDouble }
-	def payoutNmc = this.findAll(By_<(this.balance, 0.0), By(this.network, "namecoin")).foldLeft(0.0) { _ + _.balance.toDouble }
-	def payoutSlc = this.findAll(By_<(this.balance, 0.0), By(this.network, "solidcoin")).foldLeft(0.0) { _ + _.balance.toDouble }
+	private def payoutFor(network: String) = {
+		var num = this.findAll(By(this.paid, true), By(this.network, network)).foldLeft(0.0) { _ + _.balance.toDouble } * (-1)
+		if (num == 0.0) 0.0 else num // 0.0 == -0.0 => true
+	}
+	def payoutBtc = payoutFor("bitcoin")
+	def payoutNmc = payoutFor("namecoin")
+	def payoutSlc = payoutFor("solidcoin")
 }
 
 
@@ -85,13 +90,23 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 	}
 
 	def isEligible: Boolean = {
+		if (this.paid.is)
+			return true
 		if (DateTimeHelpers.getDate(this.timestamp.is).isBefore(DateTimeHelpers.getDate.minusHours(12)))
 			return true
-		if (DateTimeHelpers.getDate(this.timestamp.is).isAfter(DateTimeHelpers.getDate.minusHours(12)) && this.threshold >= 2)
+		if (DateTimeHelpers.getDate(this.timestamp.is).isAfter(DateTimeHelpers.getDate.minusHours(12)) && this.threshold.is >= 2)
 			return true
 
 		false
 	}
 
+	def transactionLink: NodeSeq = {
+		if (!this.paid.is) return Text(this.sendAddress.is)
+		else this.network.is match {
+			case "bitcoin" => <a href={"http://blockexplorer.com/tx/%s".format(this.txid.is)} target="_blank">{this.sendAddress.is}</a>
+			case "namecoin" => <a href={"http://explorer.dot-big.org/tx/%s".format(this.txid.is)} target="_blank">{this.sendAddress.is}</a>
+			case "solidcoin" => <a href={"http://solidcoin.whmcr.co.uk/tx/%s".format(this.txid.is)} target="_blank">{this.sendAddress.is}</a>
+		}
+	}
 
 }
