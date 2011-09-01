@@ -119,6 +119,41 @@ object StatCollector extends LiftActor {
 	/** Jobs **/
 	private def cleanupJob {
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
+
+		def updateTransaction(network: String, t: Map[String, Any]) =
+			t.get("txid") match {
+				case Some(a: String) if (a != "") =>
+					WonShare.find(By(WonShare.txid, a)) match {
+
+						// Update confirmations on found blocks
+						case Full(a: WonShare) =>
+							a.confirmations(t.get("confirmations").getOrElse(0).toString.toLong).save
+
+						// Fin Won Shares which don't have a tx id
+						case _ =>
+							WonShare.find(By(WonShare.txid, ""),
+								By(WonShare.network, network),
+								OrderBy(WonShare.blockNumber, Ascending)) match {
+									case Full(ws: WonShare) =>
+										ws.txid(a).
+										confirmations(t.get("confirmations").getOrElse(0).toString.toLong)
+										.save
+									case _ => println("could not find a valid block for this!")
+								}
+								
+					}
+				case _ => println("no txid in transaction :(")
+			}
+
+		List(("bitcoin", BtcCmd("listtransactions")), ("namecoin", NmcCmd("listtransactions")), ("solidcoin", SlcCmd("listtransactions"))).map(s => {
+			Coind.parse(Coind.run(s._2)) match {
+				case a: List[Map[String, Any]] =>
+					a.filter(d => d.get("category").get.toString.matches("generate|immature")).map(d => updateTransaction(s._1, d))
+				case _ => println("not the expected list")
+			}
+		})
+
+		WonShare.findAll(By(WonShare.blockNumber, 0L)).map(ws => ws.fetchInfo)
 	}
 
 	private def rewardJob {
@@ -128,12 +163,6 @@ object StatCollector extends LiftActor {
 				if (WonShare.count(By(WonShare.id, winner.id.is)) > 0) return
 				val shareCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is))
 				val staleCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
-
-				val block = Coind.run(network match {
-					case "bitcoin" => BtcCmd("getblocknumber")
-					case "namecoin" => NmcCmd("getblocknumber")
-					case "solidcoin" => SlcCmd("getblocknumber")
-				}).toLong - 1L
 
 				try {
 					println("Found winning share %s".format(winner.id.is))
@@ -145,10 +174,13 @@ object StatCollector extends LiftActor {
 
 
 					// for every worker with shares, try to find it
-					r._2.map(wi => PoolWorker.find(By(PoolWorker.username, wi(0))) match {
+					println("r: %s".format(r))
+					r._2.map(wi => getWorker(wi(00)) match {
 						case Full(p: PoolWorker) => archiveShares(p, winner.network.is, wi(1).toLong, wi(2).toLong, winner.id.is)
 						case _ =>
 					})
+
+					def getWorker(name: String) = PoolWorker.find(By(PoolWorker.username, name))
 
 					def archiveShares(worker: PoolWorker, network: String, shares: Long, stales: Long, belowId: Long) {
 						println("got %s shares (%s stale) for %s on %s (below %s)".format(shares, stales, worker.username, network, belowId))
@@ -175,19 +207,23 @@ object StatCollector extends LiftActor {
 
 						// reward
 						val rew = user.reward(network, shares, shareCount)
-						AccountBalance.create.user(user.id.is).network(network).balance(rew).save
+						AccountBalance.create.
+							user(user.id.is).
+							network(network).
+							balance(rew).
+							timestamp(currentDate.toDate).
+							threshold(user.donatePercent.is.toDouble.floor.toInt).
+							paid(false).save
 						network match {
 							case "bitcoin" => user.balance_btc(user.balanceBtcDB)
 							case "namecoin" => user.balance_nmc(user.balanceNmcDB)
 							case "solidcoin" => user.balance_slc(user.balanceSlcDB)
 						}
-
 						user.save
 					}
 				 } catch { case _ => }
 
 				WonShare.create.id(winner.id.is).
-					blockNumber(block).
 					username(winner.username.is).
 					ourResult(winner.ourResult.is).
 					upstreamResult(winner.upstreamResult.is).
@@ -241,6 +277,7 @@ object StatCollector extends LiftActor {
 		diff = Coind.run(SlcCmd("getdifficulty")).toDouble
 		block = Coind.run(SlcCmd("getblocknumber")).toLong
 		addBlock("solidcoin", diff, block)
+
 	}
 
 	/* reload needed data */
@@ -404,10 +441,20 @@ class StatComet extends CometActor {
 		".global_slc_shares *" #> r.solidcoin.shares &
 		".global_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
 		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(20)).map(s =>
-			".blocks_network *" #> s.network &
-			".blocks_id *" #> s.blockNumber.toString &
+			".blocks_network *" #> s.network.is &
 			".blocks_time *" #> s.timestamp.toString &
-			".blocks_shares *" #> s.shares.toString
+			".blocks_shares *" #> s.shares.toString &
+			".blocks_id *" #> (s.txid.is match {
+				case "" => if (s.blockNumber == null) Text("tbd") else Text(s.blockNumber.is.toString)
+				case _ => s.network.is match {
+					case "bitcoin" =>
+						<a href={"http://blockexplorer.com/tx/%s".format(s.txid)} target="_blank">{s.blockNumber.toString}</a>
+					case "namecoin" =>
+						Text(s.blockNumber.toString)
+					case "solidcoin" =>
+						<a href={"http://solidcoin.whmcr.co.uk/tx/%s".format(s.txid)} target="_blank">{s.blockNumber.toString}</a>
+				}
+			})
 		)
 
 }

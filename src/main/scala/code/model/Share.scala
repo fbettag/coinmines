@@ -35,6 +35,9 @@ import net.liftweb.util._
 import net.liftweb.common._
 import java.util.Date
 
+import java.util.regex.Pattern
+import dispatch._
+
 object Share extends Share with LongKeyedMetaMapper[Share] {
 	override def dbTableName = "shares"
 }
@@ -104,7 +107,11 @@ class WonShare extends LongKeyedMapper[WonShare] {
 	object blockNumber extends MappedLong(this) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
+		override def defaultValue = 0L
 	}
+
+	object hash extends MappedString(this, 255)
+	object txid extends MappedString(this, 255)
 
 	object username extends MappedString(this, 255) {
 		override def dbIndexed_? = true
@@ -144,6 +151,10 @@ class WonShare extends LongKeyedMapper[WonShare] {
 		override def dbIndexed_? = true
 	}
 
+	object confirmations extends MappedLong(this) {
+		override def defaultValue = 0L
+	}
+
 	object shares extends MappedLong(this) {
 		override def dbNotNull_? = true
 		override def defaultValue = 0L
@@ -154,4 +165,21 @@ class WonShare extends LongKeyedMapper[WonShare] {
 		override def defaultValue = 0L
 	}
 
+	def fetchInfo {
+		if (this.blockNumber.is != 0L || this.txid.is == "" || this.network.is == "namecoin") return
+
+		val h = new Http
+		val r = this.network.is match {
+			case "bitcoin" =>   :/("blockexplorer.com") / "tx" / this.txid.is
+			case "namecoin" => return
+			case "solidcoin" => :/("solidcoin.whmcr.co.uk") / "tx" / this.txid.is
+		}
+		val ignore = r >|
+		val output = Http(r >- { str => str }).toString
+		val m = Pattern.compile("<a [^>]*href=\".*/block/([^\"]+)\"[^>]*>(?:SolidCoin|block) ([0-9]+)</a>").matcher(output)
+		if (!m.find) return
+		try {
+			this.blockNumber(m.group(2).toLong).hash(m.group(1)).save
+		} catch { case _ => }
+	}
 }

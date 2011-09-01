@@ -55,10 +55,8 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 		override def dbNotNull_? = true
 	}
 
-	object sendAddress extends MappedString(this, 255) {
-		override def dbIndexed_? = true
-//		override def dbNotNull_? = true
-	}
+	object sendAddress extends MappedString(this, 255)
+	object txid extends MappedString(this, 255)
 
 	object balance extends MappedDecimal(this, java.math.MathContext.DECIMAL64, 8) {
 		override def dbNotNull_? = true
@@ -87,14 +85,9 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 	}
 
 	def isEligible: Boolean = {
-		val donatePercent: Double = User.find(By(User.id, this.user.is)) match {
-			case Full(u: User) => u.donatePercent.is.toDouble
-			case _ => 0.0
-		}
-
 		if (DateTimeHelpers.getDate(this.timestamp.is).isBefore(DateTimeHelpers.getDate.minusHours(12)))
 			return true
-		if (DateTimeHelpers.getDate(this.timestamp.is).isAfter(DateTimeHelpers.getDate.minusHours(12)) && donatePercent >= 2.0)
+		if (DateTimeHelpers.getDate(this.timestamp.is).isAfter(DateTimeHelpers.getDate.minusHours(12)) && this.threshold >= 2)
 			return true
 
 		false
