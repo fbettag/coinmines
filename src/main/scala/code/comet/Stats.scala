@@ -55,13 +55,13 @@ import scala.collection.immutable.HashMap
 import lib._
 import model._
 
-case class Tick(reschedule: Boolean)
+case object Tick
 
 sealed trait StatsGatherCommand
 case class StatsCleanup extends StatsGatherCommand
 case class StatsReward(repeat: Boolean) extends StatsGatherCommand
-case class StatsGatherGlobal(target: CometActor, reschedule: Boolean) extends StatsGatherCommand
-case class StatsGatherUser(target: CometActor, user: User, reschedule: Boolean) extends StatsGatherCommand
+case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
+case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
 sealed trait StatsReply
 case class StatsUserCoinReply(hashrate: Int, total: Long, round: Long, stale: Long,
@@ -76,37 +76,33 @@ case class StatsGlobalCoinReply(hashrate: Int, shares: Long, payout: Double) ext
 case class StatsGlobalReply(
 	lastUpdate: DateTime,
 	hashrate: Int, workers: Int,
-	bitcoin: StatsGlobalCoinReply, namecoin: StatsGlobalCoinReply, solidcoin: StatsGlobalCoinReply,
-	reschedule: Boolean) extends StatsReply
+	bitcoin: StatsGlobalCoinReply, namecoin: StatsGlobalCoinReply, solidcoin: StatsGlobalCoinReply) extends StatsReply
 
 
 object StatCollector extends LiftActor {
 
 	val calculateRewards = Props.get("pool.calculate") match {
-			case Full(a: String) => a.toBoolean
+			case Full(a: String) if (a.toBoolean) => ActorPing.schedule(this, StatsReward(true), 1 second)
 			case _ => false
 	}
 
-	if (calculateRewards)
-		ActorPing.schedule(this, StatsReward(true), 1 second)
-	
-	ActorPing.schedule(this, Tick(true), 1 second)
+	ActorPing.schedule(this, Tick, 1 second)
 	ActorPing.schedule(this, StatsCleanup, 5 minutes)
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
-			a.target ! getGlobal(a.reschedule)
+			a.target ! getGlobal
 		case a: StatsGatherUser =>
-			a.target ! getUser(a.user, a.reschedule)
+			a.target ! getUser(a.user)
 		case a: StatsCleanup =>
 			cleanupJob
-			ActorPing.schedule(this, a, 10 minute)
+			ActorPing.schedule(this, StatsCleanup, 5 minute)
 		case a: StatsReward =>
 			rewardJob
-			if (a.repeat) ActorPing.schedule(this, a, 10 seconds)
-		case a: Tick =>
+			if (a.repeat) ActorPing.schedule(this, StatsReward(true), 10 seconds)
+		case Tick =>
 			minuteJob
-			ActorPing.schedule(this, a, 1 minute)
+			ActorPing.schedule(this, Tick, 1 minute)
 		case _ =>
 	}
 
@@ -116,7 +112,7 @@ object StatCollector extends LiftActor {
 	def transactionFee = 0.02
 
 	private var globalReply =
-		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), false)
+		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0))
 	private var userReplies: Map[String, StatsUserReply] = Map()
 	
 
@@ -290,7 +286,7 @@ object StatCollector extends LiftActor {
 	}
 
 	/* reload needed data */
-	private def getUser(user: User, reschedule: Boolean): StatsUserReply = {
+	private def getUser(user: User): StatsUserReply = {
 	
 		def shareQuery(network: String) =
 			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.email.is)))
@@ -316,29 +312,29 @@ object StatCollector extends LiftActor {
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_btc },
 						user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
-						user.rewardBtc(btcShares, getGlobal(reschedule).bitcoin.shares),
+						user.rewardBtc(btcShares, getGlobal.bitcoin.shares),
 						user.unconfirmedBtc,
 						user.payoutBtc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_nmc },
 						user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
-						user.rewardNmc(nmcShares, getGlobal(reschedule).namecoin.shares),
+						user.rewardNmc(nmcShares, getGlobal.namecoin.shares),
 						user.unconfirmedNmc,
 						user.payoutNmc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_slc },
 						user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
-						user.rewardSlc(slcShares, getGlobal(reschedule).solidcoin.shares),
+						user.rewardSlc(slcShares, getGlobal.solidcoin.shares),
 						user.unconfirmedSlc,
 						user.payoutSlc),
-					getGlobal(reschedule))
+					getGlobal)
 				userReplies += (user.email.is -> repl)
 				repl
 			}
 		}
 	}
 
-	private def getGlobal(reschedule: Boolean): StatsGlobalReply = {
+	private def getGlobal: StatsGlobalReply = {
 		if (globalReply.lastUpdate.isBefore(shortInvalidDate)) {
 			/* Shares */
 			def sharesQuery(network: String) = Share.count(By(Share.network, network))
@@ -364,8 +360,7 @@ object StatCollector extends LiftActor {
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
 				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, AccountBalance.payoutBtc),
 				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, AccountBalance.payoutNmc),
-				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc),
-				reschedule)
+				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc))
 		}
 		globalReply
 	}
@@ -375,39 +370,42 @@ object StatCollector extends LiftActor {
 class StatComet extends CometActor {
 	override def defaultPrefix = Full("stat")
 	
-	this ! Tick(true)
+	this ! Tick
   
 	// If this actor is not used for 2 minutes, destroy it
 	override def lifespan: Box[TimeSpan] = Full(2 minutes)
 
 	override def lowPriority = {
-		case a: Tick =>
+		case Tick =>
 			val msg: StatsGatherCommand = User.currentUser match {
-				case Full(u: User) => StatsGatherUser(this, u, a.reschedule)
-				case _ => StatsGatherGlobal(this, a.reschedule)
+				case Full(u: User) => StatsGatherUser(this, u)
+				case _ => StatsGatherGlobal(this)
 			}
 			StatCollector ! msg
 
 		case a: StatsGlobalReply =>
+			reply = Full(a)
 			partialUpdate(
 				Replace("thestats", cssSel(a).apply(defaultHtml)) &
 				JsRaw("$('.last_updated').effect('highlight', 1000)").cmd
 			)
-			if (a.reschedule)
-				ActorPing.schedule(this, Tick(true), 60 seconds) 
+			ActorPing.schedule(this, Tick, 60 seconds) 
 
 		case a: StatsUserReply =>
+			reply = Full(a)
 			partialUpdate(
 				Replace("thestats", cssSel(a).apply(defaultHtml)) &
 				JsRaw("$('.last_updated').effect('highlight', 1000)").cmd
 			)
-			if (a.global.reschedule)
-				ActorPing.schedule(this, Tick(true), 30 seconds) 
+			ActorPing.schedule(this, Tick, 30 seconds) 
 	}
 
-	def render = {
-		this ! Tick(false)
-		<span id="thestats"/>
+	private var reply: Box[StatsReply] = Empty
+
+	def render = reply match {
+		case Full(a: StatsGlobalReply) => cssSel(a)
+		case Full(a: StatsUserReply) => cssSel(a)
+		case _ => <span id="thestats"/>
 	}
 
 	def cssSel(r: StatsUserReply): CssSel =
@@ -477,26 +475,28 @@ class StatComet extends CometActor {
 class GigahashComet extends CometActor {
 	override def defaultPrefix = Full("ghstat")
 
-	this ! Tick(true)
+	this ! Tick
 
 	// If this actor is not used for 2 minutes, destroy it
 	override def lifespan: Box[TimeSpan] = Full(2 minutes)
 
 	override def lowPriority = {
-		case a: Tick => StatCollector ! StatsGatherGlobal(this, a.reschedule)
+		case Tick => StatCollector ! StatsGatherGlobal(this)
 
 		case a: StatsGlobalReply =>
+			reply = Full(a)
 			partialUpdate(
 				Replace("ghstats", cssSel(a).apply(defaultHtml)) &
 				JsRaw("$('#ghstats').effect('highlight', 1000)").cmd
 			)
-			if (a.reschedule)
-				ActorPing.schedule(this, Tick(true), 60 seconds) 
+			ActorPing.schedule(this, Tick, 60 seconds) 
 	}
+	
+	private var reply: Box[StatsReply] = Empty
 
-	def render = {
-		this ! Tick(false)
-		<span id="ghstats"/>
+	def render = reply match {
+		case Full(a: StatsGlobalReply) => cssSel(a)
+		case _ => <span id="ghstats"/>
 	}
 
 	def cssSel(r: StatsGlobalReply): CssSel =
