@@ -114,6 +114,12 @@ class WonShare extends LongKeyedMapper[WonShare] {
 	object hash extends MappedString(this, 255)
 	object txid extends MappedString(this, 255)
 
+	object paid extends MappedBoolean(this) {
+		override def dbIndexed_? = true
+		override def dbNotNull_? = true
+		override def defaultValue = false
+	}
+
 	object username extends MappedString(this, 255) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
@@ -148,6 +154,11 @@ class WonShare extends LongKeyedMapper[WonShare] {
 	}
 
 	object network extends MappedString(this, 20) {
+		override def dbNotNull_? = true
+		override def dbIndexed_? = true
+	}
+
+	object category extends MappedString(this, 20) {
 		override def dbNotNull_? = true
 		override def dbIndexed_? = true
 	}

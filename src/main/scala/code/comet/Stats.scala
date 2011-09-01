@@ -59,7 +59,6 @@ case object Tick
 
 sealed trait StatsGatherCommand
 case class StatsCleanup extends StatsGatherCommand
-case class StatsReward extends StatsGatherCommand
 case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
 case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
@@ -81,11 +80,6 @@ case class StatsGlobalReply(
 
 object StatCollector extends LiftActor {
 
-	val calculateRewards = Props.get("pool.calculate") match {
-			case Full(a: String) if (a.toBoolean) => this ! StatsReward
-			case _ => false
-	}
-
 	this ! Tick
 	this ! StatsCleanup
 
@@ -97,9 +91,6 @@ object StatCollector extends LiftActor {
 		case StatsCleanup =>
 			cleanupJob
 			ActorPing.schedule(this, StatsCleanup, 5 minutes)
-		case StatsReward =>
-			rewardJob
-			ActorPing.schedule(this, StatsReward, 10 seconds)
 		case Tick =>
 			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
@@ -118,137 +109,147 @@ object StatCollector extends LiftActor {
 
 	/** Jobs **/
 	private def cleanupJob {
-		// Update won shares we don't have info for
-		WonShare.findAll(By(WonShare.blockNumber, 0L)).map(ws => ws.fetchInfo)
-		
-		def updateTransaction(network: String, t: HashMap[String, Any]) =
-			t.get("txid") match {
-				case Some(a: String) if (a != "") =>
-					WonShare.find(By(WonShare.txid, a)) match {
 
-						// Update confirmations on found blocks
-						case Full(a: WonShare) =>
-							a.confirmations(t.get("confirmations").getOrElse(0).toString.toLong).save
-
-						// Fin Won Shares which don't have a tx id
-						case _ =>
-							WonShare.find(By(WonShare.txid, ""),
-								By(WonShare.network, network),
-								OrderBy(WonShare.blockNumber, Ascending)) match {
-									case Full(ws: WonShare) =>
-										ws.txid(a).
-										confirmations(t.get("confirmations").getOrElse(0).toString.toLong)
-										.save
-									case _ => println("could not find a valid block for this!")
-								}
-								
-					}
-				case _ => println("no txid in transaction :(")
+		def parseTransactions(network: String) {
+			println("")
+			println("parsing transactions for: %s".format(network))
+			println("")
+			val cmd = network match {
+				case "bitcoin" => BtcCmd("listtransactions")
+				case "namecoin" => NmcCmd("listtransactions")
+				case "solidcoin" => SlcCmd("listtransactions")
 			}
 
-		def parseTransactions(network: String, cmd: CoindCommand) {
 			Coind.parse(Coind.run(cmd)) match {
 				case a: List[HashMap[String, Any]] =>
 					a.map(d => d).
-					  filter(d => d.get("category").get.toString.matches("generate|immature")).
-					  map(d => updateTransaction(network, d))
+					  filter(d => d.get("category").get.toString.matches("generate|immature|orphan")).
+					  map(t => t.get("txid") match {
+						case Some(a: String) if (a != "") =>
+							WonShare.find(By(WonShare.txid, a), By(WonShare.network, network)) match {
+
+								// Update confirmations and category on found blocks
+								case Full(a: WonShare) =>
+									println("updating existing share! %s %s".format(a.id.is, t.get("category").get))
+									a.confirmations(t.get("confirmations").getOrElse(0).toString.toLong).category(t.get("category").get.toString).save
+
+								// Find Won Shares which don't have a tx id
+								case _ =>
+									WonShare.find(By(WonShare.txid, ""),
+										By(WonShare.network, network),
+										OrderBy(WonShare.blockNumber, Ascending)) match {
+											case Full(ws: WonShare) =>
+												ws.txid(a).
+												confirmations(t.get("confirmations").getOrElse(0).toString.toLong)
+												.save
+											case _ => println("could not find a valid block for this!")
+										}
+										
+							}
+						case _ => println("no txid in transaction :(")
+					})
+
 				case _ => println("not the expected list")
 			}
 		}
 
-		parseTransactions("bitcoin", BtcCmd("listtransactions"))
-		parseTransactions("namecoin", NmcCmd("listtransactions"))
-		parseTransactions("solidcoin", SlcCmd("listtransactions"))
+		def calcCoins(winner: WonShare): Boolean = {
+			if (winner.paid.is) return true
+			try {
+				// Find all workers which submitted shares in this network before our winning block
+				val stalesQueryString = "SELECT count(id) FROM shares AS ss WHERE id < %s AND network = '%s' AND our_result = false AND ss.username = ws.username GROUP BY username".format(winner.id.is, winner.network.is)
+				val sharesQueryString = "SELECT username, count(id) AS shares, (%s) AS stales FROM shares AS ws WHERE id < %s AND network = '%s' GROUP BY username".format(stalesQueryString, winner.id.is, winner.network.is)
+				val r = DB.runQuery(sharesQueryString)
 
-		// Recalculate balance
-		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
+				// for every worker with shares, try to find it
+				r._2.map(wi => PoolWorker.find(By(PoolWorker.username, wi(0))) match {
+					case Full(p: PoolWorker) => archiveShares(p, winner.network.is, wi(1).toLong, wi(2).toLong, winner.id.is)
+					case _ =>
+				})
 
-		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
-	}
+				def archiveShares(worker: PoolWorker, network: String, shares: Long, stales: Long, belowId: Long) {
+					val user = worker.owner.reload
 
-	private def rewardJob {
-		def calcCoins(network: String) {
-			// Find all winning shares and sort them by ID
-			Share.findAll(By(Share.upstreamResult, true), By(Share.network, network), OrderBy(Share.id, Ascending)).map(winner => {
-				if (WonShare.count(By(WonShare.id, winner.id.is)) > 0) return
-				val shareCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is))
-				val staleCount = Share.count(By(Share.network, winner.network), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
+					// shares
+					user.shares_total(user.shares_total.is + shares)
+					user.shares_stale(user.shares_stale.is + stales)
+					network match {
+						case "bitcoin" =>
+							user.shares_total_btc(user.shares_total_btc.is + shares)
+							user.shares_stale_btc(user.shares_stale_btc.is + stales)
 
-				try {
-					println("Found winning share %s".format(winner.id.is))
-					// Find all workers which submitted shares in this network before our winning block
-					val stalesQueryString = "SELECT count(id) FROM shares AS ss WHERE id < %s AND network = '%s' AND our_result = false AND ss.username = ws.username GROUP BY username".format(winner.id.is, winner.network.is)
-					val sharesQueryString = "SELECT username, count(id) AS shares, (%s) AS stales FROM shares AS ws WHERE id < %s AND network = '%s' GROUP BY username".format(stalesQueryString, winner.id.is, winner.network.is)
-					println("query: %s".format(sharesQueryString))
-					val r = DB.runQuery(sharesQueryString)
+						case "namecoin" =>
+							user.shares_total_nmc(user.shares_total_nmc.is + shares)
+							user.shares_stale_nmc(user.shares_stale_nmc.is + stales)
 
+						case "solidcoin" =>
+							user.shares_total_slc(user.shares_total_slc.is + shares)
+							user.shares_stale_slc(user.shares_stale_slc.is + stales)
 
-					// for every worker with shares, try to find it
-					println("r: %s".format(r))
-					r._2.map(wi => getWorker(wi(00)) match {
-						case Full(p: PoolWorker) => archiveShares(p, winner.network.is, wi(1).toLong, wi(2).toLong, winner.id.is)
 						case _ =>
-					})
-
-					def getWorker(name: String) = PoolWorker.find(By(PoolWorker.username, name))
-
-					def archiveShares(worker: PoolWorker, network: String, shares: Long, stales: Long, belowId: Long) {
-						println("got %s shares (%s stale) for %s on %s (below %s)".format(shares, stales, worker.username, network, belowId))
-						val user = worker.owner.reload
-
-						// shares
-						user.shares_total(user.shares_total.is + shares)
-						user.shares_stale(user.shares_stale.is + stales)
-						network match {
-							case "bitcoin" =>
-								user.shares_total_btc(user.shares_total_btc.is + shares)
-								user.shares_stale_btc(user.shares_stale_btc.is + stales)
-
-							case "namecoin" =>
-								user.shares_total_nmc(user.shares_total_nmc.is + shares)
-								user.shares_stale_nmc(user.shares_stale_nmc.is + stales)
-
-							case "solidcoin" =>
-								user.shares_total_slc(user.shares_total_slc.is + shares)
-								user.shares_stale_slc(user.shares_stale_slc.is + stales)
-
-							case _ =>
-						}
-
-						// reward
-						val rew = user.reward(network, shares, shareCount)
-						AccountBalance.create.
-							user(user.id.is).
-							network(network).
-							balance(rew).
-							timestamp(currentDate.toDate).
-							threshold(user.donatePercent.is.toDouble.floor.toInt).
-							paid(false).save
-			
-						user.save
 					}
-				 } catch { case _ => }
 
-				WonShare.create.id(winner.id.is).
-					username(winner.username.is).
-					ourResult(winner.ourResult.is).
-					upstreamResult(winner.upstreamResult.is).
-					reason(winner.reason.is).
-					solution(winner.solution.is).
-					timestamp(winner.timestamp.is).
-					source(winner.source.is).
-					network(winner.network.is).
-					shares(shareCount).
-					stales(staleCount).
-					save
-				Share.bulkDelete_!!(By_<(Share.id, winner.id.is), By(Share.network, network))
-				winner.delete_!
-			})
+					// reward
+					val rew = user.reward(network, shares, winner.shares.is)
+					AccountBalance.create.
+						user(user.id.is).
+						network(network).
+						balance(rew).
+						timestamp(currentDate.toDate).
+						threshold(user.donatePercent.is.toDouble.floor.toInt).
+						paid(false).save
+		
+					user.save
+				}
+			 } catch { case _ => }
+
+			 winner.paid(true).save
 		}
 
-		calcCoins("bitcoin")
-		calcCoins("namecoin")
-		calcCoins("solidcoin")
+		Props.get("pool.calculate") match {
+			case Full(a: String) if (a.toBoolean) =>
+
+				// Find all winning shares and sort them by ID
+				Share.findAll(By(Share.upstreamResult, true), OrderBy(Share.id, Ascending)).map(winner =>
+					WonShare.find(By(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is)) match {
+						case Full(a: WonShare) =>
+						case _ =>
+							val shareCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is))
+							val staleCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
+							WonShare.create.id(winner.id.is).
+								username(winner.username.is).
+								ourResult(winner.ourResult.is).
+								upstreamResult(winner.upstreamResult.is).
+								reason(winner.reason.is).
+								solution(winner.solution.is).
+								timestamp(winner.timestamp.is).
+								source(winner.source.is).
+								network(winner.network.is).
+								shares(shareCount).
+								stales(staleCount).
+								save
+							parseTransactions(winner.network.is)
+					}
+				)
+
+				// Find all WonShares **WITH** a transactionid and split the share
+				WonShare.findAll(By(WonShare.paid, false), NotBy(WonShare.txid, ""), OrderBy(WonShare.id, Ascending)).map(wonShare => {
+					parseTransactions(wonShare.network.is)
+					if (calcCoins(wonShare))
+						Share.bulkDelete_!!(By_<(Share.id, wonShare.id.is + 1L), By(Share.network, wonShare.network.is))
+				})
+				
+				// Find all of the above, but **WITH** unpaid
+				WonShare.findAll(NotBy(WonShare.txid, ""), OrderBy(WonShare.id, Ascending)).map(wonShare => parseTransactions(wonShare.network.is))
+
+			case _ => false
+		}
+
+		// Recalculate balance
+		//User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
+
+		// Cleanup userReplies hash
+		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
 	}
 
 	private def minuteJob {
