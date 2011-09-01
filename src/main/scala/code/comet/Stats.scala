@@ -440,19 +440,20 @@ class StatComet extends CometActor {
 		".global_slc_hashrate *" #> "%.3f GH/sec".format(r.solidcoin.hashrate / 1000.0)  &
 		".global_slc_shares *" #> r.solidcoin.shares &
 		".global_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
-		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(20)).map(s =>
+		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(50)).map(s =>
 			".blocks_network *" #> s.network.is &
 			".blocks_time *" #> s.timestamp.toString &
 			".blocks_shares *" #> s.shares.toString &
-			".blocks_id *" #> (s.txid.is match {
+			".blocks_confirms *" #> s.confirmations.toString &
+			".blocks_id *" #> (s.hash.is match {
 				case "" => if (s.blockNumber == null) Text("tbd") else Text(s.blockNumber.is.toString)
 				case _ => s.network.is match {
 					case "bitcoin" =>
-						<a href={"http://blockexplorer.com/tx/%s".format(s.txid)} target="_blank">{s.blockNumber.toString}</a>
+						<a href={"http://blockexplorer.com/block/" + s.hash.is} target="_blank">{s.blockNumber.toString}</a>
 					case "namecoin" =>
 						Text(s.blockNumber.toString)
 					case "solidcoin" =>
-						<a href={"http://solidcoin.whmcr.co.uk/tx/%s".format(s.txid)} target="_blank">{s.blockNumber.toString}</a>
+						<a href={"http://solidcoin.whmcr.co.uk/block/" + s.hash.is} target="_blank">{s.blockNumber.toString}</a>
 				}
 			})
 		)
