@@ -108,15 +108,15 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 
 
 	object wallet_btc extends MappedString(this, 255) {
-		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
+		override def setFilter = trim _ :: toWallet _ :: super.setFilter
 	}
 
 	object wallet_nmc extends MappedString(this, 255) {
-		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
+		override def setFilter = trim _ :: toWallet _ :: super.setFilter
 	}
 
 	object wallet_slc extends MappedString(this, 255) {
-		override def setFilter = trim _ :: toLower _ :: toWallet _ :: super.setFilter
+		override def setFilter = trim _ :: toWallet _ :: super.setFilter
 	}
 
 

@@ -87,7 +87,7 @@ object StatCollector extends LiftActor {
 	}
 
 	ActorPing.schedule(this, Tick, 1 second)
-	ActorPing.schedule(this, StatsCleanup, 5 minutes)
+	ActorPing.schedule(this, StatsCleanup, 1 second)
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
@@ -96,7 +96,7 @@ object StatCollector extends LiftActor {
 			a.target ! getUser(a.user)
 		case a: StatsCleanup =>
 			cleanupJob
-			ActorPing.schedule(this, StatsCleanup, 5 minute)
+			ActorPing.schedule(this, StatsCleanup, 5 minutes)
 		case a: StatsReward =>
 			rewardJob
 			if (a.repeat) ActorPing.schedule(this, StatsReward(true), 10 seconds)

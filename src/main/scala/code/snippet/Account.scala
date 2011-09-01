@@ -48,10 +48,6 @@ import net.liftweb.http.js.JsCmd
 import model._
 import lib._
 
-case class BitcoinWallet(addr: String)
-case class NamecoinWallet(addr: String)
-case class SolidcoinWallet(addr: String)
-
 
 class Account extends Loggable {
 
@@ -96,11 +92,13 @@ class Account extends Loggable {
 		var cssSelector = ""
 		var name = "BTC"
 		val fee = 0.02
+		var success = false
 		val keepPercent: Double = 1.0 - (user.donatePercent / 100).toDouble
 
 		def doIt {
 			val res = Coind.call(cmd)
-			if (res._1) AccountBalance.create.
+			success = false
+			if (res._1) success = AccountBalance.create.
 				user(user).network(network).sendAddress(wallet).paid(true).
 				txid(res._2).timestamp(DateTimeHelpers.getDate.toDate).balance(balance * (-1)).save
 		}
@@ -113,7 +111,8 @@ class Account extends Loggable {
 				balance = user.balanceBtcDB
 				cmd = BtcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				user.balance_btc(user.balanceBtcDB).save
+				balance = user.balanceBtcDB
+				user.balance_btc(balance).save
 			case "namecoin" =>
 				name = "NMC"
 				cssSelector = ".user_balance_nmc"
@@ -121,7 +120,8 @@ class Account extends Loggable {
 				balance = user.balanceNmcDB
 				cmd = NmcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				user.balance_nmc(user.balanceNmcDB).save
+				balance = user.balanceNmcDB
+				user.balance_nmc(balance).save
 			case "solidcoin" =>
 				name = "SLC"
 				cssSelector = ".user_balance_slc"
@@ -129,12 +129,17 @@ class Account extends Loggable {
 				balance = user.balanceSlcDB
 				cmd = SlcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				user.balance_slc(user.balanceSlcDB).save
+				balance = user.balanceSlcDB
+				user.balance_slc(balance).save
 		}
 
-		logger.info("SENDING COINS %s: %.8f to %s".format(user.email.is, balance, wallet))
-		JsRaw("$('%s').text('%.8f %s')".format(cssSelector, balance, name)).cmd &
-		JsRaw("$('%s').effect('highlight', {times: 2}, 400)".format(cssSelector)).cmd
+		if (success) {
+			logger.info("SENDING COINS %s: %.8f to %s".format(user.email.is, balance, wallet))
+			JsRaw("$('%s').text('%.8f %s')".format(cssSelector, balance, name)).cmd &
+			JsRaw("$('%s').effect('highlight', {times: 2}, 400)".format(cssSelector)).cmd
+		}
+		else	Alert("There was a problem sending your coins.\nPlease check if your wallet is a valid address")
+
 	}
 
 
@@ -198,7 +203,7 @@ class Account extends Loggable {
 		".payment_row *" #> balances.map(b =>
 			".payment_wallet *" #> b.transactionLink &
 			".payment_date *" #> b.timestamp.toString &
-			".payment_amount *" #> "%.8f %s".format(b.balance.is, b.network.is match {
+			".payment_amount *" #> "%.8f %s".format(b.balance.is - 0.02, b.network.is match {
 				case "bitcoin" => "BTC"
 				case "namecoin" => "NMC"
 				case "solidcoin" => "SLC"
