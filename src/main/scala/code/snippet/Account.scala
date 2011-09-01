@@ -46,7 +46,7 @@ import net.liftweb.http.js.JE.JsRaw
 import net.liftweb.http.js.JsCmd
 
 import model._
-
+import lib._
 
 case class BitcoinWallet(addr: String)
 case class NamecoinWallet(addr: String)
@@ -81,31 +81,54 @@ class Account extends Loggable {
 		user.saveWithJsFeedback("...")
 	}
 
-	def sendcoins(network: String): JsCmd = Noop
-	/*{
-		// needs to remove the 0.02 coin from user.balances accumulated,
-		// it is already substracted from user.balance_X
-		// remove 0.01 SLC, 0.0005 BTC, 0.01 NMC - 0.02 fee (difference goes to us)
-		// check with accounting!
+	def sendcoins(network: String): JsCmd = {
+		var wallet = ""
+		var balance = 0.0
+		var cmd: CoindCommand = BtcCmd("")
+		var cssSelector = ""
+		var name = "BTC"
+		val fee = 0.02
 
-		// refresh balance with statscollector.accountBalance
-		//val res = Coind.call(BtcCmd("sendtoaddress %s %.8f".format(user.wallet_btc.is, balance)))
-		//if (res._1)
-		//	AccountBalance.create.user(user).network("bitcoin").balance(balance)
-		// refresh balance with statscollector.accountBalance (again)
+		def doIt {
+			return println(cmd)
+			val res = Coind.call(cmd)
+			if (res._1) AccountBalance.create.
+				user(user).network(network).sendAddress(wallet).paid(true).
+				txid(res._2).timestamp(DateTimeHelpers.getDate.toDate).balance(balance * (-1)).save
+		}
 
-		val balance = AccountBalance.create.user(user).sendAddress(user.wallet)
-		balance.balance.setFromString(amount)
-		balance.paid(true).timestamp(new Date).save
-		logger.info("SENDING COINS: %s to %s".format(balance.balance, balance.sendAddress))
-		js.jquery.JqJsCmds.Hide("sendcoin_amount") &
-		js.jquery.JqJsCmds.FadeIn("sent_coins", 300, 600) &
-		js.JsCmds.SetHtml("account_balance", <span>{"%.8f BTC".format(user.balance.toFloat - balance.balance.toFloat)}</span>)
-		
-		"%.8f BTC".format(balance)
-		selector = "btc" "nmc" "slc"
-		JsRaw("$('.user_balance_%s').effect('highlight', {times: 2}, 400)".format(selector)).cmd
-	}*/
+		network match {
+			case "bitcoin" =>
+				name = "BTC"
+				cssSelector = ".user_balance_btc"
+				wallet = user.wallet_btc.is
+				balance = user.balanceBtcDB
+				cmd = BtcCmd("sendtoaddress %s %.8f".format(wallet, balance - fee))
+				doIt
+				user.balance_btc(user.balanceBtcDB).save
+			case "namecoin" =>
+				name = "NMC"
+				cssSelector = ".user_balance_nmc"
+				wallet = user.wallet_nmc.is
+				balance = user.balanceNmcDB
+				cmd = NmcCmd("sendtoaddress %s %.8f".format(wallet, balance - fee))
+				doIt
+				user.balance_nmc(user.balanceNmcDB).save
+			case "solidcoin" =>
+				name = "SLC"
+				cssSelector = ".user_balance_slc"
+				wallet = user.wallet_slc.is
+				balance = user.balanceSlcDB
+				cmd = SlcCmd("sendtoaddress %s %.8f".format(wallet, balance - fee))
+				doIt
+				user.balance_slc(user.balanceSlcDB).save
+		}
+
+
+		logger.info("SENDING COINS %s: %.8f to %s".format(user.email.is, balance, wallet))
+		JsRaw("$('%s').text('%.8f %s')".format(cssSelector, balance, name)).cmd &
+		JsRaw("$('%s').effect('highlight', {times: 2}, 400)".format(cssSelector)).cmd
+	}
 
 
 	/* snippets */
@@ -162,7 +185,7 @@ class Account extends Loggable {
 	}
 
 	def payments: CssSel = {
-		val balances = AccountBalance.findAll(By(AccountBalance.user, user.id.is), By_>(AccountBalance.balance, 0), OrderBy(AccountBalance.timestamp, Descending))
+		val balances = AccountBalance.findAll(By(AccountBalance.user, user.id.is), By_>(AccountBalance.balance, 0), OrderBy(AccountBalance.timestamp, Descending), MaxRows(50))
 		if (balances.length == 0) return "*" #> ""
 
 		".payment_row *" #> balances.map(b =>

@@ -120,6 +120,9 @@ object StatCollector extends LiftActor {
 	private def cleanupJob {
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
 
+		// Recalculate balance
+		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB))
+
 		def updateTransaction(network: String, t: Map[String, Any]) =
 			t.get("txid") match {
 				case Some(a: String) if (a != "") =>
@@ -214,11 +217,7 @@ object StatCollector extends LiftActor {
 							timestamp(currentDate.toDate).
 							threshold(user.donatePercent.is.toDouble.floor.toInt).
 							paid(false).save
-						network match {
-							case "bitcoin" => user.balance_btc(user.balanceBtcDB)
-							case "namecoin" => user.balance_nmc(user.balanceNmcDB)
-							case "solidcoin" => user.balance_slc(user.balanceSlcDB)
-						}
+			
 						user.save
 					}
 				 } catch { case _ => }
@@ -407,7 +406,7 @@ class StatComet extends CometActor {
 		".user_btc_shares_stale *" #> r.bitcoin.stale &
 		".user_btc_balance *" #> "%.8f BTC".format(r.user.balance_btc.is) &
 		".user_btc_reward *" #> "%.8f BTC".format(r.bitcoin.reward) &
-		".user_btc_reward_unconfirmed *" #> "%.8f BTC".format(r.bitcoin.rewardUnconfirmed) &
+		".user_btc_unconfirmed *" #> "%.8f BTC".format(r.bitcoin.rewardUnconfirmed) &
 		".user_btc_payout *" #> "%.8f BTC".format(0.toFloat) &
 		".user_nmc_hashrate *" #> "%s MH/sec".format(r.namecoin.hashrate)  &
 		".user_nmc_shares_total *" #> r.namecoin.total &
@@ -415,7 +414,7 @@ class StatComet extends CometActor {
 		".user_nmc_shares_stale *" #> r.namecoin.stale &
 		".user_nmc_balance *" #> "%.8f NMC".format(r.user.balance_nmc.is) &
 		".user_nmc_reward *" #> "%.8f NMC".format(r.namecoin.reward) &
-		".user_nmc_reward_unconfirmed *" #> "%.8f NMC".format(r.namecoin.rewardUnconfirmed) &
+		".user_nmc_unconfirmed *" #> "%.8f NMC".format(r.namecoin.rewardUnconfirmed) &
 		".user_nmc_payout *" #> "%.8f NMC".format(0.toFloat) &
 		".user_slc_hashrate *" #> "%s MH/sec".format(r.solidcoin.hashrate)  &
 		".user_slc_shares_total *" #> r.solidcoin.total &
@@ -423,7 +422,7 @@ class StatComet extends CometActor {
 		".user_slc_shares_stale *" #> r.solidcoin.stale &
 		".user_slc_balance *" #> "%.8f SLC".format(r.user.balance_slc.is) &
 		".user_slc_reward *" #> "%.8f SLC".format(r.solidcoin.reward) &
-		".user_slc_reward_unconfirmed *" #> "%.8f SLC".format(r.solidcoin.rewardUnconfirmed) &
+		".user_slc_unconfirmed *" #> "%.8f SLC".format(r.solidcoin.rewardUnconfirmed) &
 		".user_slc_payout *" #> "%.8f SLC".format(0.toFloat) &
 		cssSel(r.global)
 
