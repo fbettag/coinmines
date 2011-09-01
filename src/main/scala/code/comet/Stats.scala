@@ -59,7 +59,7 @@ case object Tick
 
 sealed trait StatsGatherCommand
 case class StatsCleanup extends StatsGatherCommand
-case class StatsReward(repeat: Boolean) extends StatsGatherCommand
+case class StatsReward extends StatsGatherCommand
 case class StatsGatherGlobal(target: CometActor) extends StatsGatherCommand
 case class StatsGatherUser(target: CometActor, user: User) extends StatsGatherCommand
 
@@ -82,24 +82,24 @@ case class StatsGlobalReply(
 object StatCollector extends LiftActor {
 
 	val calculateRewards = Props.get("pool.calculate") match {
-			case Full(a: String) if (a.toBoolean) => ActorPing.schedule(this, StatsReward(true), 1 second)
+			case Full(a: String) if (a.toBoolean) => this ! StatsReward
 			case _ => false
 	}
 
-	ActorPing.schedule(this, Tick, 1 second)
-	ActorPing.schedule(this, StatsCleanup, 1 second)
+	this ! Tick
+	this ! StatsCleanup
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
 			a.target ! getGlobal
 		case a: StatsGatherUser =>
 			a.target ! getUser(a.user)
-		case a: StatsCleanup =>
+		case StatsCleanup =>
 			cleanupJob
 			ActorPing.schedule(this, StatsCleanup, 5 minutes)
-		case a: StatsReward =>
+		case StatsReward =>
 			rewardJob
-			if (a.repeat) ActorPing.schedule(this, StatsReward(true), 10 seconds)
+			ActorPing.schedule(this, StatsReward, 10 seconds)
 		case Tick =>
 			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
@@ -121,11 +121,6 @@ object StatCollector extends LiftActor {
 		// Update won shares we don't have info for
 		WonShare.findAll(By(WonShare.blockNumber, 0L)).map(ws => ws.fetchInfo)
 		
-		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
-
-		// Recalculate balance
-		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
-
 		def updateTransaction(network: String, t: HashMap[String, Any]) =
 			t.get("txid") match {
 				case Some(a: String) if (a != "") =>
@@ -165,6 +160,10 @@ object StatCollector extends LiftActor {
 		parseTransactions("namecoin", NmcCmd("listtransactions"))
 		parseTransactions("solidcoin", SlcCmd("listtransactions"))
 
+		// Recalculate balance
+		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
+
+		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
 	}
 
 	private def rewardJob {
