@@ -294,10 +294,10 @@ object StatCollector extends LiftActor {
 	private def getUser(user: User): StatsUserReply = {
 	
 		def shareQuery(network: String) =
-			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.email.is)))
+			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.name.is)))
 
 		def staleQuery(network: String) =
-			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.email.is)), By(Share.ourResult, false))
+			Share.count(By(Share.network, network), Like(Share.username, "%s_%%".format(user.name.is)), By(Share.ourResult, false))
 
 		userReplies.get(user.email) match {
 			case Some(a: StatsUserReply) if (a.lastUpdate.isAfter(invalidDate)) => a
