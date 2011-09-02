@@ -240,13 +240,16 @@ object StatCollector extends LiftActor {
 				})
 				
 				// Find all of the above, but **WITH** unpaid
-				WonShare.findAll(NotBy(WonShare.txid, ""), OrderBy(WonShare.id, Ascending)).map(wonShare => parseTransactions(wonShare.network.is))
+				WonShare.findAll(NotBy(WonShare.txid, ""), OrderBy(WonShare.id, Ascending)).map(wonShare => {
+					wonShare.fetchInfo
+					parseTransactions(wonShare.network.is)
+				})
 
 			case _ => false
 		}
 
 		// Recalculate balance
-		//User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
+		User.findAll.map(u => u.balance_btc(u.balanceBtcDB).balance_nmc(u.balanceNmcDB).balance_slc(u.balanceSlcDB).save)
 
 		// Cleanup userReplies hash
 		userReplies.map(r => if (r._2.lastUpdate.isBefore(currentDate.minusMinutes(30))) userReplies -= r._1)
