@@ -6,3 +6,6 @@ db.password=
 pool.fee=2.0
 pool.calculate=false
 
+smtp.host=localhost
+smtp.from=noreply@i.didnt.configure.jack.shit
+

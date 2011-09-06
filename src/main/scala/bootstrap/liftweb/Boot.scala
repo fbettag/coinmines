@@ -56,6 +56,9 @@ class Boot {
 
 		Schemifier.schemify(true, Schemifier.infoF _, User, AccountBalance, NetworkBlock, PoolWorker, WonShare, Share)
 
+		System.setProperty("mail.smtp.host", Props.get("smtp.host") openOr "localhost")
+		System.setProperty("mail.smtp.from", Props.get("smtp.from") openOr "noreply@i.didnt.configure.jack.shit")
+
 		// where to search snippet
 		LiftRules.addToPackages("code")
 

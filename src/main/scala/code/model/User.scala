@@ -44,7 +44,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	override def signupFields = List(email, name, locale, timezone, password)
 
 	override val basePath: List[String] = "users" :: Nil
-	override def skipEmailValidation = true
+	//override def skipEmailValidation = true
 
 	override def editUserMenuLoc: Box[Menu] = Empty
 	override def validateUserMenuLoc: Box[Menu] = Empty
