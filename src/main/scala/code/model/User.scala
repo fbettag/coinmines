@@ -47,7 +47,7 @@ object User extends User with MetaMegaProtoUser[User] {
 	//override def skipEmailValidation = true
 
 	override def editUserMenuLoc: Box[Menu] = Empty
-	override def validateUserMenuLoc: Box[Menu] = Empty
+	//override def validateUserMenuLoc: Box[Menu] = Empty
 	//override def lostPasswordMenuLoc: Box[Menu] = Empty
 	//override def resetPasswordMenuLoc: Box[Menu] = Empty
 
