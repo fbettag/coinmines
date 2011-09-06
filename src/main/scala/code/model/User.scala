@@ -211,7 +211,7 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 	def unconfirmedSlc = balancesSlc.filter(!_.isEligible).foldLeft(0.0) { _ + _.balance.toDouble }
 
 	private def payoutFor(network: String) = {
-		val num = AccountBalance.findAll(By(AccountBalance.paid, true), By(AccountBalance.network, network),
+		val num = AccountBalance.findAll(By(AccountBalance.paid, true), By_<(AccountBalance.balance, 0), By(AccountBalance.network, network),
 			By(AccountBalance.user, this.id)).foldLeft(0.0) { _ + _.balance.toDouble } * (-1)
 		if (num == 0.0) 0.0 else num // 0.0 == -0.0 => true
 	}

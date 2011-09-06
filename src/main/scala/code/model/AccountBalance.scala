@@ -42,10 +42,9 @@ import code.lib._
 object AccountBalance extends AccountBalance with LongKeyedMetaMapper[AccountBalance] {
 	override def dbTableName = "account_balances"
 
-	private def payoutFor(network: String) = {
-		var num = this.findAll(By(this.paid, true), By(this.network, network)).foldLeft(0.0) { _ + _.balance.toDouble } * (-1)
-		if (num == 0.0) 0.0 else num // 0.0 == -0.0 => true
-	}
+	private def payoutFor(network: String) =
+		this.findAll(By(this.paid, true), By_>(this.balance, 0), By(this.network, network)).foldLeft(0.0) { _ + _.balance.toDouble }
+
 	def payoutBtc = payoutFor("bitcoin")
 	def payoutNmc = payoutFor("namecoin")
 	def payoutSlc = payoutFor("solidcoin")
@@ -73,6 +72,12 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 		override def defaultValue = false
 	}
 
+	object orphan extends MappedBoolean(this) {
+		override def dbIndexed_? = true
+		override def defaultValue = false
+	}
+
+
 	object threshold extends MappedInt(this) {
 		override def dbIndexed_? = true
 		override def dbNotNull_? = true
@@ -89,13 +94,29 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 		override def dbIndexed_? = true
 	}
 
+	object wonShare extends MappedLongForeignKey(this, WonShare)
+
+	def winner = WonShare.find(By(WonShare.id, this.wonShare.is))
+
 	def isEligible: Boolean = {
+		// if it was an outgoing payment, its ok
 		if (this.paid.is)
 			return true
-		if (DateTimeHelpers.getDate(this.timestamp.is).isBefore(DateTimeHelpers.getDate.minusHours(12)))
-			return true
-		if (DateTimeHelpers.getDate(this.timestamp.is).isAfter(DateTimeHelpers.getDate.minusHours(12)) && this.threshold.is >= 2)
-			return true
+
+		// if it is an orphaned account_balance, dont do it
+		if (this.orphan.is)
+			return false
+	
+		// if this balance has a wonshare associated
+		if (this.wonShare.is != 0)
+			winner match {
+				case Full(a: WonShare) =>
+					// check if it is an orphan (yet), if it is, set it this way to save further cpu cycles
+					if (a.category == "orphan") return this.orphan(true).save
+					// if it has more than 119 confirmations, set paid just to save some more cpu cycles
+					if (a.confirmations >= 120) return this.paid(true).save
+				case _ => return false
+			}
 
 		false
 	}

@@ -313,19 +313,19 @@ object StatCollector extends LiftActor {
 					user.shares_stale.is + btcStales + nmcStales + slcStales,
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_btc },
-						user.shares_total_btc.is + btcShares, btcShares, user.shares_stale_btc.is + btcStales,
+						user.shares_total_btc.is + btcShares, btcShares, btcStales,
 						user.rewardBtc(btcShares, getGlobal.bitcoin.shares),
 						user.unconfirmedBtc,
 						user.payoutBtc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_nmc },
-						user.shares_total_nmc.is + nmcShares, nmcShares, user.shares_stale_nmc.is + nmcStales,
+						user.shares_total_nmc.is + nmcShares, nmcShares, nmcStales,
 						user.rewardNmc(nmcShares, getGlobal.namecoin.shares),
 						user.unconfirmedNmc,
 						user.payoutNmc),
 					StatsUserCoinReply(
 						user.workers.foldLeft(0) { _ + _.hashrate_slc },
-						user.shares_total_slc.is + slcShares, slcShares, user.shares_stale_slc.is + slcStales,
+						user.shares_total_slc.is + slcShares, slcShares, slcStales,
 						user.rewardSlc(slcShares, getGlobal.solidcoin.shares),
 						user.unconfirmedSlc,
 						user.payoutSlc),
