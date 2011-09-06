@@ -51,7 +51,7 @@ import lib._
 
 class Account extends Loggable {
 
-	def user = User.currentUser.open_!
+	def user = User.currentUser.open_!.reload
 
 	/* helpers */
 	def updateBtcWallet(a: String) = { user.wallet_btc(a).saveWithJsFeedback(".user_wallet_btc") }
@@ -94,6 +94,7 @@ class Account extends Loggable {
 		val fee = 0.02
 		var success = false
 		val keepPercent: Double = 1.0 - (user.donatePercent / 100).toDouble
+		val tehUser = user.reload
 
 		def doIt {
 			val res = Coind.call(cmd)
@@ -107,34 +108,34 @@ class Account extends Loggable {
 			case "bitcoin" =>
 				name = "BTC"
 				cssSelector = ".user_balance_btc"
-				wallet = user.wallet_btc.is
-				balance = user.balanceBtcDB
+				wallet = theUser.wallet_btc.is
+				balance = tehUser.balanceBtcDB
 				cmd = BtcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				balance = user.balanceBtcDB
-				user.balance_btc(balance).save
+				balance = tehUser.balanceBtcDB
+				theUser.balance_btc(balance).save
 			case "namecoin" =>
 				name = "NMC"
 				cssSelector = ".user_balance_nmc"
-				wallet = user.wallet_nmc.is
-				balance = user.balanceNmcDB
+				wallet = tehUser.wallet_nmc.is
+				balance = tehUser.balanceNmcDB
 				cmd = NmcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				balance = user.balanceNmcDB
-				user.balance_nmc(balance).save
+				balance = tehUser.balanceNmcDB
+				tehUser.balance_nmc(balance).save
 			case "solidcoin" =>
 				name = "SLC"
 				cssSelector = ".user_balance_slc"
-				wallet = user.wallet_slc.is
-				balance = user.balanceSlcDB
+				wallet = theUuser.wallet_slc.is
+				balance = theUser.balanceSlcDB
 				cmd = SlcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				balance = user.balanceSlcDB
-				user.balance_slc(balance).save
+				balance = tehUser.balanceSlcDB
+				tehUser.balance_slc(balance).save
 		}
 
 		if (success) {
-			logger.info("SENDING COINS %s: %.8f to %s".format(user.email.is, balance, wallet))
+			logger.info("SENDING COINS %s: %.8f to %s".format(tehUser.email.is, balance, wallet))
 			JsRaw("$('%s').text('%.8f %s')".format(cssSelector, balance, name)).cmd &
 			JsRaw("$('%s').effect('highlight', {times: 2}, 400)".format(cssSelector)).cmd
 		}
