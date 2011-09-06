@@ -94,7 +94,7 @@ class Account extends Loggable {
 		val fee = 0.02
 		var success = false
 		val keepPercent: Double = 1.0 - (user.donatePercent / 100).toDouble
-		val tehUser = user.reload
+		val theUser = user.reload
 
 		def doIt {
 			val res = Coind.call(cmd)
@@ -109,33 +109,33 @@ class Account extends Loggable {
 				name = "BTC"
 				cssSelector = ".user_balance_btc"
 				wallet = theUser.wallet_btc.is
-				balance = tehUser.balanceBtcDB
+				balance = theUser.balanceBtcDB
 				cmd = BtcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				balance = tehUser.balanceBtcDB
+				balance = theUser.balanceBtcDB
 				theUser.balance_btc(balance).save
 			case "namecoin" =>
 				name = "NMC"
 				cssSelector = ".user_balance_nmc"
-				wallet = tehUser.wallet_nmc.is
-				balance = tehUser.balanceNmcDB
+				wallet = theUser.wallet_nmc.is
+				balance = theUser.balanceNmcDB
 				cmd = NmcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				balance = tehUser.balanceNmcDB
-				tehUser.balance_nmc(balance).save
+				balance = theUser.balanceNmcDB
+				theUser.balance_nmc(balance).save
 			case "solidcoin" =>
 				name = "SLC"
 				cssSelector = ".user_balance_slc"
-				wallet = theUuser.wallet_slc.is
+				wallet = theUser.wallet_slc.is
 				balance = theUser.balanceSlcDB
 				cmd = SlcCmd("sendtoaddress %s %.8f".format(wallet, (balance * keepPercent) - fee))
 				doIt
-				balance = tehUser.balanceSlcDB
-				tehUser.balance_slc(balance).save
+				balance = theUser.balanceSlcDB
+				theUser.balance_slc(balance).save
 		}
 
 		if (success) {
-			logger.info("SENDING COINS %s: %.8f to %s".format(tehUser.email.is, balance, wallet))
+			logger.info("SENDING COINS %s: %.8f to %s".format(theUser.email.is, balance, wallet))
 			JsRaw("$('%s').text('%.8f %s')".format(cssSelector, balance, name)).cmd &
 			JsRaw("$('%s').effect('highlight', {times: 2}, 400)".format(cssSelector)).cmd
 		}
