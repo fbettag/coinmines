@@ -93,7 +93,7 @@ object StatCollector extends LiftActor {
 			a.target ! getUser(a.user)
 		case a: StatsCleanup =>
 			cleanupJob(a.calculate)
-			//ActorPing.schedule(this, a, 5 minutes)
+			ActorPing.schedule(this, a, 5 minutes)
 		case Tick =>
 			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
