@@ -178,37 +178,24 @@ class WonShare extends LongKeyedMapper[WonShare] {
 	}
 
 	def fetchInfo {
-		if (this.blockNumber.is != 0L || this.txid.is == "" || this.network.is == "namecoin") return
+		if (this.blockNumber.is != 0L || this.txid.is == "" || this.category.is == "orphan") return
 
 		val h = new Http
-		val r = this.network.is match {
-			case "bitcoin" =>   :/("blockexplorer.com") / "tx" / this.txid.is
-			case "namecoin" =>  return // :/("explorer.dot-bit.org") // namecoins disabled
-			case "solidcoin" => :/("solidcoin.whmcr.co.uk") / "tx" / this.txid.is
-		}
+		val r = (if (this.network.is == "bitcoin") :/("blockexplorer.com") else :/("150.214.61.49", 2750)) / "tx" / this.txid.is
 		val ignore = r >|
 
-		val m =
-			if (this.network.is == "namecoin") {
-				val output = h(r << "q=%s".format(this.txid.is) >- { str => str }).toString
-				Pattern.compile("<b>Hash :.*([0-9a-zA-Z]{64,}).*Block :.*([0-9]{5,})").matcher(output)
-			} else {
-				val output = h(r >- { str => str }).toString
-				Pattern.compile("<a [^>]*href=\".*/block/([^\"]+)\"[^>]*>(?:SolidCoin|block) ([0-9]+)</a>").matcher(output)
-			}
+		val output = h(r >- { str => str }).toString
+		val m = Pattern.compile("<a [^>]*href=\".*/block/([^\"]+)\"[^>]*>(?:SolidCoin|Namecoin|block) ([0-9]+)</a>").matcher(output)
 		if (m.find) try { this.blockNumber(m.group(2).toLong).hash(m.group(1)).save } catch { case _ => }
-
+		h.shutdown
 	}
 
 	def blockLink: NodeSeq = {
 		if (this.category.toString == "orphan") return <a href="https://en.bitcoin.it/wiki/Block_chain" target="_blank">invalid</a>
 		if (this.blockNumber.is == 0L || this.hash.is == "") return Text("tbd")
-		else this.network.is match {
-			case "bitcoin" => <a href={"http://blockexplorer.com/block/%s".format(this.hash.is)} target="_blank">{this.blockNumber.toString}</a>
-			case "namecoin" => Text("cnbd")
-			//case "namecoin" => <a href={"http://exploirer.dot-bit.org/tx/%s".format(this.txid.is)} target="_blank">cnbd</a>
-			case "solidcoin" => <a href={"http://solidcoin.whmcr.co.uk/block/%s".format(this.hash.is)} target="_blank">{this.blockNumber.toString}</a>
-		}
+		
+		val url = if (this.network.is == "bitcoin") "blockexplorer.com" else "blockexplorer.sytes.net"
+		<a href={"http://%s/block/%s".format(url, this.hash.is)} target="_blank">{this.blockNumber.toString}</a>
 	}
 
 }
