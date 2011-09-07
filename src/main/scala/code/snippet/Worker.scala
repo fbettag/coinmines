@@ -83,14 +83,21 @@ class Worker extends Loggable {
 		<input type="button" value="add!" onclick={"javascript:%s".format(handler)}/>
 	}
 
-	def buildRow(worker: PoolWorker) = <xml:group>
+	def buildRow(worker: PoolWorker) = {
+		val workerName = worker.username.is.replaceFirst("^%s_".format(user.name), "")
+		val nameHandler = (SHtml.ajaxText("", updateName(worker, _)) \\ "@onblur").toString.replaceAll("this.value", "\\$('#workerName_%s').val()".format(worker.id))
+		val passHandler = (SHtml.ajaxText("", updatePassword(worker, _)) \\ "@onblur").toString.replaceAll("this.value", "\\$('#workerPass_%s').val()".format(worker.id))
+
 		<tr id={"row_%s".format(worker.id)}>
-			<td>{user.name}_{SHtml.ajaxText(worker.username.replaceFirst("^%s_".format(user.name), ""), updateName(worker, _))}</td>
+			<td>{user.name}_<input type="text" id={"workerName_%s".format(worker.id)} value={workerName}/></td>
 			<td>{worker.lasthashString}</td>
-			<td>{SHtml.ajaxText(worker.password, updatePassword(worker, _), "class" -> "worker_password", "type" -> "password")}</td>
-			<td>{a(() => deleteWorker(worker), <span>{S.??("delete")}</span>)}</td>
+			<td><input type="password" id={"workerPass_%s".format(worker.id)} value={worker.password} class="worker_password"/></td>
+			<td>
+				<input type="button" value="save!" onclick={"javascript:%s;%s;return false".format(nameHandler, passHandler)}/>
+				{a(() => deleteWorker(worker), Text(S.??("delete")))}
+			</td>
 		</tr>
-	</xml:group>
+	}
 
 	def list =
 		<table>

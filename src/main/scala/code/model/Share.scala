@@ -201,6 +201,7 @@ class WonShare extends LongKeyedMapper[WonShare] {
 	}
 
 	def blockLink: NodeSeq = {
+		if (this.category.toString == "orphan") return <a href="https://en.bitcoin.it/wiki/Block_chain" target="_blank">invalid</a>
 		if (this.blockNumber.is == 0L || this.hash.is == "") return Text("tbd")
 		else this.network.is match {
 			case "bitcoin" => <a href={"http://blockexplorer.com/block/%s".format(this.hash.is)} target="_blank">{this.blockNumber.toString}</a>

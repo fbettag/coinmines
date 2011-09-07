@@ -419,7 +419,7 @@ class StatComet extends CometActor {
 			//".miner_hashrate_btc *" #> "%s MH/s".format(w.hashrate_btc) &
 			//".miner_hashrate_nmc *" #> "%s MH/s".format(w.hashrate_nmc) &
 			//".miner_hashrate_slc *" #> "%s MH/s".format(w.hashrate_slc) &
-			".miner_lasthash *" #> w.lasthash.toString 
+			".miner_lasthash *" #> w.lasthashString
 		}) &
 		".user_hashrate *" #> "%s MH/sec".format(r.hashrate) &
 		".user_shares_total *" #> r.total &
@@ -465,7 +465,7 @@ class StatComet extends CometActor {
 		".global_slc_payout *" #> "%.8f SLC".format(r.solidcoin.payout) &
 		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(50)).map(s =>
 			".blocks_network *" #> s.network.is &
-			".blocks_time *" #> s.timestamp.toString &
+			".blocks_time *" #> DateTimeHelpers.getDate(s.timestamp.is).toDate.toString &
 			".blocks_shares *" #> s.shares.toString &
 			".blocks_confirms *" #> s.confirmations.toString &
 			".blocks_id *" #> s.blockLink

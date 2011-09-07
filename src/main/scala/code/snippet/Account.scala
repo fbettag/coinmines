@@ -203,7 +203,7 @@ class Account extends Loggable {
 
 		".payment_row *" #> balances.map(b =>
 			".payment_wallet *" #> b.transactionLink &
-			".payment_date *" #> b.timestamp.toString &
+			".payment_date *" #> DateTimeHelpers.getDate(b.timestamp.is).toDate.toString &
 			".payment_amount *" #> "%.8f %s".format(b.balance.is + 0.02, b.network.is match {
 				case "bitcoin" => "BTC"
 				case "namecoin" => "NMC"

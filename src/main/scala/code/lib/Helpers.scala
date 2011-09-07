@@ -65,19 +65,18 @@ object PrintlnMongo {
 
 object DateTimeHelpers {
 
-	var timezone = "CET"
+	var timezone = DateTimeZone.forTimeZone(S.timeZone)
 
 	def getTZ(tz: String): DateTimeZone = DateTimeZone.forTimeZone(TimeZone.getTimeZone(tz))
 	def getUserTZ: DateTimeZone = User.currentUser match {
 		case Full(u: User) => getTZ(u.timezone)
-		case _ => getTZ(timezone)
+		case _ => timezone
 	}
 
 	def getDate: DateTime =
-
 		new DateTime(User.currentUser match {
 			case Full(u: User) => getTZ(u.timezone)
-			case _ => getTZ(timezone)
+			case _ => timezone
 		})
 
 	def getDate(date: Calendar): DateTime = new DateTime(date, getUserTZ)
