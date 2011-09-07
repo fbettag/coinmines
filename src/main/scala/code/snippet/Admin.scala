@@ -55,16 +55,16 @@ class Admin extends Loggable {
 	def bitcoins =
 		".bitcoin_balance *" #> "%.8f BTC".format(try { Coind.run(BtcCmd("getbalance")).toFloat } catch { case _ => 0.0 }) &
 		".bitcoin_info" #> <pre>{Coind.run(BtcCmd("getinfo"))}</pre> &
-		".bitcoin_transactions" #> <pre>{Coind.run(BtcCmd("listtransactions"))}</pre>
+		".bitcoin_transactions" #> <pre>{Coind.run(BtcCmd("listtransactions * 100"))}</pre>
 
 	def namecoins =
 		".namecoin_balance *" #> "%.8f NMC".format(try { Coind.run(NmcCmd("getbalance")).toFloat } catch { case _ => 0.0 }) &
 		".namecoin_info" #> <pre>{Coind.run(NmcCmd("getinfo"))}</pre> &
-		".namecoin_transactions" #> <pre>{Coind.run(NmcCmd("listtransactions"))}</pre>
+		".namecoin_transactions" #> <pre>{Coind.run(NmcCmd("listtransactions * 100"))}</pre>
 
 	def solidcoins =
 		".solidcoin_balance *" #> "%.8f SLC".format(try { Coind.run(SlcCmd("getbalance")).toFloat } catch { case _ => 0.0 }) &
 		".solidcoin_info" #> <pre>{Coind.run(SlcCmd("getinfo"))}</pre> &
-		".solidcoin_transactions" #> <pre>{Coind.run(SlcCmd("listtransactions"))}</pre>
+		".solidcoin_transactions" #> <pre>{Coind.run(SlcCmd("listtransactions * 100"))}</pre>
 
 }

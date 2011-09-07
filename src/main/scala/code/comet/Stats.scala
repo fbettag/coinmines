@@ -118,9 +118,9 @@ object StatCollector extends LiftActor {
 			println("parsing transactions for: %s".format(network))
 			println("")
 			val cmd = network match {
-				case "bitcoin" => BtcCmd("listtransactions")
-				case "namecoin" => NmcCmd("listtransactions")
-				case "solidcoin" => SlcCmd("listtransactions")
+				case "bitcoin" => BtcCmd("listtransactions * 400")
+				case "namecoin" => NmcCmd("listtransactions * 400")
+				case "solidcoin" => SlcCmd("listtransactions * 400")
 			}
 
 			Coind.parse(Coind.run(cmd)) match {
