@@ -80,13 +80,8 @@ case class StatsGlobalReply(
 
 object StatCollector extends LiftActor {
 
-	def boot() {
-		this ! Tick
-		this ! StatsCleanup(Props.get("pool.calculate") match {
-			case Full(a: String) => a.toBoolean
-			case _ => false
-		})
-	}
+	this ! Tick
+	this ! StatsCleanup(false)
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
@@ -94,7 +89,8 @@ object StatCollector extends LiftActor {
 		case a: StatsGatherUser =>
 			a.target ! getUser(a.user)
 		case a: StatsCleanup =>
-			cleanupJob(a.calculate)
+			val doCalculations_? = if (!a.calculate) Props.get("pool.calculate").openOr("false").toBoolean else true
+			cleanupJob(doCalculations_?)
 			ActorPing.schedule(this, a, 5 minutes)
 		case Tick =>
 			minuteJob
