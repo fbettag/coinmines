@@ -35,9 +35,12 @@ import net.liftweb.util._
 import net.liftweb.common._
 import java.util.Date
 
+import code.lib._
 import java.util.regex.Pattern
 import dispatch._
 import scala.xml._
+import org.joda.time._
+import org.joda.time.format._
 
 object Share extends Share with LongKeyedMetaMapper[Share] {
 	override def dbTableName = "shares"
@@ -94,6 +97,12 @@ class Share extends LongKeyedMapper[Share] with IdPK {
 
 object WonShare extends WonShare with LongKeyedMetaMapper[WonShare] {
 	override def dbTableName = "won_shares"
+
+	def lasthash(network: String) = WonShare.find(By(WonShare.network, network), OrderBy(WonShare.timestamp, Descending), MaxRows(1)) match {
+		case Full(a: WonShare) => DateTimeHelpers.getDate(a.timestamp.is)
+		case _ => DateTimeHelpers.getDate
+	}
+
 }
 
 class WonShare extends LongKeyedMapper[WonShare] {

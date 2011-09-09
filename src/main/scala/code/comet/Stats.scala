@@ -71,7 +71,7 @@ case class StatsUserReply(
 	bitcoin: StatsUserCoinReply, namecoin: StatsUserCoinReply, solidcoin: StatsUserCoinReply,
 	global: StatsGlobalReply) extends StatsReply
 
-case class StatsGlobalCoinReply(hashrate: Int, shares: Long, payout: Double) extends StatsReply
+case class StatsGlobalCoinReply(hashrate: Int, shares: Long, payout: Double, lasthash: DateTime) extends StatsReply
 case class StatsGlobalReply(
 	lastUpdate: DateTime,
 	hashrate: Int, workers: Int,
@@ -80,11 +80,13 @@ case class StatsGlobalReply(
 
 object StatCollector extends LiftActor {
 
-	this ! Tick
-	this ! StatsCleanup(Props.get("pool.calculate") match {
-		case Full(a: String) => a.toBoolean
-		case _ => false
-	})
+	def boot() {
+		this ! Tick
+		this ! StatsCleanup(Props.get("pool.calculate") match {
+			case Full(a: String) => a.toBoolean
+			case _ => false
+		})
+	}
 
 	protected def messageHandler = {
 		case a: StatsGatherGlobal =>
@@ -106,7 +108,7 @@ object StatCollector extends LiftActor {
 	def transactionFee = 0.02
 
 	private var globalReply =
-		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0), StatsGlobalCoinReply(0, 0, 0.0))
+		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0, DateTimeHelpers.getDate), StatsGlobalCoinReply(0, 0, 0.0, DateTimeHelpers.getDate), StatsGlobalCoinReply(0, 0, 0.0, DateTimeHelpers.getDate))
 	private var userReplies: Map[String, StatsUserReply] = Map()
 	
 
@@ -360,9 +362,9 @@ object StatCollector extends LiftActor {
 			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(10).toDate)).toInt
 
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
-				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, AccountBalance.payoutBtc),
-				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, AccountBalance.payoutNmc),
-				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc))
+				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, AccountBalance.payoutBtc, WonShare.lasthash("bitcoin")),
+				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, AccountBalance.payoutNmc, WonShare.lasthash("namecoin")),
+				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc, WonShare.lasthash("solidcoin")))
 		}
 		globalReply
 	}
@@ -464,8 +466,8 @@ class StatComet extends CometActor {
 		".global_slc_shares *" #> r.solidcoin.shares &
 		".global_slc_payout *" #> "%.8f SLC".format(r.solidcoin.payout) &
 		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(50)).map(s =>
-			".blocks_network *" #> s.network.is &
-			".blocks_time *" #> DateTimeHelpers.getDate(s.timestamp.is).toDate.toString &
+			".blocks_network *" #> { val n = s.network.is; n(0).toUpperCase + n.substring(1, n.length) } &
+			".blocks_time *" #> DateTimeHelpers.getDate(s.timestamp.is).toString("yyyy-MM-dd HH:mm:ss z") &
 			".blocks_shares *" #> s.shares.toString &
 			".blocks_confirms *" #> s.confirmations.toString &
 			".blocks_id *" #> s.blockLink
@@ -505,7 +507,11 @@ class GigahashComet extends CometActor {
 		"#gigahash_total *" #> "%.1f GH/sec".format(r.hashrate / 1000.0) &
 		"#gigahash_btc *" #> "%.1f GH/sec".format(r.bitcoin.hashrate / 1000.0) &
 		"#gigahash_nmc *" #> "%.1f GH/sec".format(r.namecoin.hashrate / 1000.0) &
-		"#gigahash_slc *" #> "%.1f GH/sec".format(r.solidcoin.hashrate / 1000.0)
+		"#gigahash_slc *" #> "%.1f GH/sec".format(r.solidcoin.hashrate / 1000.0) &
+		"#lasthash_btc *" #> DateTimeHelpers.durationAsString(r.bitcoin.lasthash) &
+		"#lasthash_nmc *" #> DateTimeHelpers.durationAsString(r.namecoin.lasthash) &
+		"#lasthash_slc *" #> DateTimeHelpers.durationAsString(r.solidcoin.lasthash) &
+		"#worker_count *" #> r.workers
 
 }
 

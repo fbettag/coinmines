@@ -67,7 +67,8 @@ class PoolWorker extends LongKeyedMapper[PoolWorker] with IdPK with JsEffects[Po
 
 	def lasthashString = {
 		lasthash match {
-			case a: Any if (a.is.isInstanceOf[java.sql.Timestamp]) => DateTimeHelpers.getDate(a).toDate.toString
+			case a: Any if (a.is.isInstanceOf[java.sql.Timestamp]) =>
+				DateTimeHelpers.getDate(a.is).toString("yyyy-MM-dd HH:mm:ss z")
 			case _ => "never"
 		}
 	}

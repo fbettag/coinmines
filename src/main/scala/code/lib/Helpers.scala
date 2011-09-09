@@ -42,7 +42,8 @@ import net.liftweb.http.js.JsCmd
 import net.liftweb.mapper._
 
 import java.util.{Date, Calendar, TimeZone}
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time._
+import org.joda.time.format._
 import scala.xml._
 
 import ag.bett.scala.lib.Exec._
@@ -69,21 +70,24 @@ object DateTimeHelpers {
 
 	def getTZ(tz: String): DateTimeZone = DateTimeZone.forTimeZone(TimeZone.getTimeZone(tz))
 	def getUserTZ: DateTimeZone = User.currentUser match {
-		case Full(u: User) => getTZ(u.timezone)
+		case Full(u: User) => getTZ(u.timezone.is)
 		case _ => timezone
 	}
 
-	def getDate: DateTime =
-		new DateTime(User.currentUser match {
-			case Full(u: User) => getTZ(u.timezone)
-			case _ => timezone
-		})
-
+	def getDate: DateTime = new DateTime(getUserTZ)
 	def getDate(date: Calendar): DateTime = new DateTime(date, getUserTZ)
 	def getDate(date: Date): DateTime = new DateTime(date, getUserTZ)
 
-	def getOffsetMillis = getUserTZ.getOffset(0)
-	def getOffsetSeconds = getOffsetMillis/1000
+	def durationAsString(start: DateTime) = (new PeriodFormatterBuilder)
+			.printZeroAlways
+			.minimumPrintedDigits(2)
+			.appendHours
+			.appendSuffix(":")
+			.appendMinutes
+			.appendSuffix(":")
+			.appendMinutes
+			.toFormatter
+			.print(new Period(start, DateTimeHelpers.getDate))
 
 }
 
