@@ -190,11 +190,12 @@ class WonShare extends LongKeyedMapper[WonShare] {
 		if (this.blockNumber.is != 0L || this.txid.is == "" || this.category.is == "orphan") return
 
 		val h = new Http
-		val r = (if (this.network.is == "bitcoin") :/("blockexplorer.com") else :/("150.214.61.49", 2750)) / "tx" / this.txid.is
+		//val r = (if (this.network.is == "bitcoin") :/("blockexplorer.com") else :/("150.214.61.49", 2750)) / "tx" / this.txid.is
+		val r = :/("150.214.61.49", 2750)) / "tx" / this.txid.is
 		val ignore = r >|
 
 		val output = h(r >- { str => str }).toString
-		val m = Pattern.compile("<a [^>]*href=\".*/block/([^\"]+)\"[^>]*>(?:SolidCoin|Namecoin|block) ([0-9]+)</a>").matcher(output)
+		val m = Pattern.compile("<a [^>]*href=\".*/block/([^\"]+)\"[^>]*>(?:SolidCoin|Namecoin|Bitcoin|block) ([0-9]+)</a>").matcher(output)
 		if (m.find) try { this.blockNumber(m.group(2).toLong).hash(m.group(1)).save } catch { case _ => }
 		h.shutdown
 	}
@@ -203,7 +204,8 @@ class WonShare extends LongKeyedMapper[WonShare] {
 		if (this.category.toString == "orphan") return <a href="https://en.bitcoin.it/wiki/Block_chain" target="_blank">invalid</a>
 		if (this.blockNumber.is == 0L || this.hash.is == "") return Text("tbd")
 		
-		val url = if (this.network.is == "bitcoin") "blockexplorer.com" else "blockexplorer.sytes.net"
+		//val url = if (this.network.is == "bitcoin") "blockexplorer.com" else "blockexplorer.sytes.net"
+		val url = "blockexplorer.sytes.net"
 		<a href={"http://%s/block/%s".format(url, this.hash.is)} target="_blank">{this.blockNumber.toString}</a>
 	}
 
