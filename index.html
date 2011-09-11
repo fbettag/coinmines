@@ -1,110 +1,147 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset='utf-8'>
+	<meta charset='utf-8'>
 
-  <title>fbettag/coinmines @ GitHub</title>
+	<title>fbettag/coinmines @ GitHub</title>
 
-  <style type="text/css">
-    body {
-      margin-top: 1.0em;
-      background-color: #5daff5;
-      font-family: Helvetica, Arial, FreeSans, san-serif;
-      color: #000000;
-    }
-    #container {
-      margin: 0 auto;
-      width: 700px;
-    }
-    h1 { font-size: 3.8em; color: #a2500a; margin-bottom: 3px; }
-    h1 .small { font-size: 0.4em; }
-    h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #a2500a; }
-    h3 { text-align: center; color: #a2500a; }
-    a { color: #a2500a; }
-    .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
-    .download { float: right; }
-    pre { background: #000; color: #fff; padding: 15px;}
-    hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
-    .footer { text-align:center; padding-top:30px; font-style: italic; }
-  </style>
+	<style type="text/css">
+		body {
+			margin-top: 1.0em;
+			background-color: #5daff5;
+			font-family: Helvetica, Arial, FreeSans, san-serif;
+			color: #000000;
+		}
+		#container {
+			margin: 0 auto;
+			width: 700px;
+		}
+		h1 { font-size: 3.8em; color: #a2500a; margin-bottom: 3px; }
+		h1 .small { font-size: 0.4em; }
+		h1 a { text-decoration: none }
+		h2 { font-size: 1.5em; color: #a2500a; }
+		h3 { text-align: center; color: #a2500a; }
+		a { color: #a2500a; }
+		pre { background: #000; color: #fff; padding: 15px;}
+		hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
+		.footer { text-align:center; padding-top:30px; font-style: italic; }
+		.description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
+		.download { float: right; }
+	</style>
 </head>
 
 <body>
-  <a href="http://github.com/fbettag/coinmines"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+	<a href="http://github.com/fbettag/coinmines"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
 
-  <div id="container">
+	<div id="container">
 
-    <div class="download">
-      <a href="http://github.com/fbettag/coinmines/zipball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
-      <a href="http://github.com/fbettag/coinmines/tarball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
-    </div>
+	<div class="download">
+		<a href="http://github.com/fbettag/coinmines/zipball/master">
+		<img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
+		<a href="http://github.com/fbettag/coinmines/tarball/master">
+		<img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
+	</div>
 
-    <h1><a href="http://github.com/fbettag/coinmines">CoinMines</a>
-      <span class="small">by <a href="http://github.com/fbettag">fbettag</a></span></h1>
+	<h1><a href="http://github.com/fbettag/coinmines">CoinMines</a> <span class="small">by <a href="http://github.com/fbettag">fbettag</a></span></h1>
 
-    <div class="description">
-    	PoolServerJ and pushpool Web-Frontend written in Scala (Lift Web Framework) for Pooled Bitcoin, Namecoin and Solidcoin Mining with Proportional Rewarding
-    </div>
-
-    <h2>Dependencies</h2>
-<p><a href="http://www.postgresql.org">PostgreSQL</a><br/>
-<a href="http://www.scala-lang.org">Scala</a><br/>
-<a href="http://poolserverj.org/">PoolServerJ</a> or<br/>
-<a href="https://github.com/MtRed/pushpool">pushpool from MtRed with PostgreSQL Support (and it's dependencies)</a></p>
-<h2>Install</h2>
-<p>Update dependencies with sbt:
-
-<pre>
-./sbt update
-</pre>
+	<div class="description">
+		PoolServerJ and pushpool Web-Frontend written in Scala (Lift Web Framework) for Pooled Bitcoin, Namecoin and Solidcoin Mining with Proportional Rewarding
+	</div>
 
 
-Update run jetty:
-
-<pre>
-./sbt ~jetty-run
-</pre>
-
-
-Start your bitcoin server in a screen/tmux session:
-
-<pre>
-./bitcoin-0.3.xx/bin/64/bitcoind -server
-</pre>
+	<h2>Dependencies</h2>
+	<p>
+		<a href="http://www.postgresql.org">PostgreSQL</a><br/>
+		<a href="http://www.scala-lang.org">Scala</a><br/>
+		<a href="http://poolserverj.org/">PoolServerJ</a> or<br/>
+		<a href="https://github.com/MtRed/pushpool">pushpool from MtRed with PostgreSQL Support (and it's dependencies)</a>
+	</p>
 
 
-To get started with PoolServerJ (preferred), try the <a href="http://poolserverj.org/quick-start/" target="_blank">Quick Start Tutorial</a> together with our config/local-daemon.properties.
+	<h2>Download</h2>
+	<p>
+		You can download this project in either
+		<a href="http://github.com/fbettag/coinmines/zipball/master">zip</a> or
+		<a href="http://github.com/fbettag/coinmines/tarball/master">tar</a> formats.
+	</p>
 
-We also provide the two configuration files for pushpool in config/.
-
-
-To get started and compiling with pushpool: 
-
-<pre>
-git clone https://github.com/MtRed/pushpool.git
-cd pushpool
-./configure --prefix=/opt/pushpool
-make
-make install
-</pre>
-
-Start pushpools blkmond in a separate screen/tmux window:
-
-<pre>
-/opt/pushpool/sbin/blkmond blkmon.cfg
-</pre>
+	<p>
+		You can also clone the project with <a href="http://git-scm.com">Git</a> by running:
+		<pre>$ git clone git://github.com/fbettag/coinmines mysite.com</pre>
+	</p>
 
 
-Start pushpool itself (also in a new window):
+	<h2>Setup and keeping track of Development</h2>
 
-<pre>
-/opt/pushpool/sbin/pushpoold --stderr -F
-</pre></p>
-<h2>License</h2>
-<p><pre>
+	<p>Sometimes it can be hard for newcomers to see how git helps you manage this, but here is how i recommend doing it.</p>
+
+<pre>cd mysite.com/
+git branch -t mysite.com		# create your own branch
+git checkout mysite.com			# check it out
+git branch -D master			# delete the local master
+edit templates in src/main/webapp	# edit your templates
+git commit -a -m 'My Layout changes.'	# save your changes</pre>
+
+	<p>Now whenever we publish an update, you simply do:</p>
+	<pre>git rebase origin/master</pre>
+
+	<p>The best thing would be, to push your new branch to a remote repository for backup. To find out more about stuff like that check <a href="http://gitready.com/" target="_blank">gitready.com</a> and sometimes <a href="http://uberblo.gs/tag/git">my blog</a>.</p>
+
+
+	<p>Configure your Project and Database: (use default.props as example)</p>
+<pre>src/main/resources/props/default.props            (Development)
+src/main/resources/props/pilot.default.props      (Preview - copy from dev)
+src/main/resources/props/production.default.props (Production - copy from dev)</pre>
+
+	<p><strong>If you want your production. and pilot.default.props in your repository, make sure you uncomment the line in .gitingore!</strong></p>
+
+	<p><strong>Only set pool.calculate=true in Production! (production.default.props)</strong></p>
+
+	<p>SMTP Setup is straight forward. Either you have your SMTP Host on localhost, or you have a remote-host which lets you relay. In Postfix this can be easily done with my_networks.</p>
+
+	<p><strong>Whenever you're done making changes, make sure you commit! Otherwise rebase won't work amongst other problems like backup..</strong></p>
+
+	<p>Update dependencies with sbt:</p>
+	<pre>./sbt update</pre>
+
+	<p>Run in development-mode:</p>
+	<pre>./sbt ~jetty-run</pre>
+
+
+	<h2>Production</h2>
+
+	<p>Deploy for production:</p>
+	<pre>./sbt package-war</pre>
+
+	<p>Download <a href="https://github.com/dpp/lift-samples/blob/master/jetty_instance.tgz" target="_blank">David Pollak's jetty_instance.tgz</a> and do the following:</p>
+<pre>tar -jxf jetty_instance.tgz
+cd jetty
+echo 9090 > base_port (or whatever your Port should be)
+echo 64M > ram_size (change to appropriate size!)</pre>
+
+	<p>Copy your packaged .war-file to jetty/webapps/root.war and run:</p>
+
+	<pre>./start_prod.sh (and ./shutdown_prod.sh)</pre>
+
+	<p>Point your nginx to the port of the jetty and be happy.</p>
+
+
+	<h2>Poolserver</h2>
+	<p>Start your bitcoind, namecoind and solidcoind.</p>
+	<p>Afterwards start either pushpoold or PoolServerJ for each network you are running.</p>
+	<p>To get started with PoolServerJ (preferred), try the <a href="http://poolserverj.org/quick-start/" target="_blank">Quick Start Tutorial</a> together with our config/local-daemon.properties.</p>
+	<p>We also provide the two configuration files for pushpool in config/.</p>
+
+
+	<h2>Thanks</h2>
+	<p>to everybody in the Lift Community and on <a href="http://groups.google.com/group/liftweb" target="_blank">Liftweb Google Groups</a>.</p>
+
+	<h2>Author</h2>
+	<p>Franz Bettag (franz@bett.ag)</p>
+
+
+	<h2>License</h2>
+	<p><pre>
   Copyright (c) 2011, Franz Bettag <franz@bett.ag>
   All rights reserved.
 
@@ -129,41 +166,24 @@ Start pushpool itself (also in a new window):
   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-</pre></p>
-<h2>Authors</h2>
-<p>Franz Bettag (franz@bett.ag)
-<br/>
-<br/>      </p>
-<h2>Contact</h2>
-<p>Franz Bettag (franz@bett.ag)</p>
+	  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	</pre></p>
 
+	<div class="footer">
+		get the source code on GitHub : <a href="http://github.com/fbettag/coinmines">fbettag/coinmines</a>
+	</div>
 
-    <h2>Download</h2>
-    <p>
-      You can download this project in either
-      <a href="http://github.com/fbettag/coinmines/zipball/master">zip</a> or
-      <a href="http://github.com/fbettag/coinmines/tarball/master">tar</a> formats.
-    </p>
-    <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
-      by running:
-      <pre>$ git clone git://github.com/fbettag/coinmines</pre>
-    </p>
+	</div>
 
-    <div class="footer">
-      get the source code on GitHub : <a href="http://github.com/fbettag/coinmines">fbettag/coinmines</a>
-    </div>
-
-  </div>
-
-  <script type="text/javascript">
-var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
-</script>
-<script type="text/javascript">
-try {
-var pageTracker = _gat._getTracker("UA-436394-12");
-pageTracker._trackPageview();
-} catch(err) {}</script>
+	<script type="text/javascript">
+		var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+		document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+	</script>
+	<script type="text/javascript">
+		try {
+			var pageTracker = _gat._getTracker("UA-436394-12");
+			pageTracker._trackPageview();
+		} catch(err) {}
+	</script>
 </body>
 </html>
