@@ -213,7 +213,7 @@ object StatCollector extends LiftActor {
 				WonShare.find(By(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is)) match {
 					case Full(a: WonShare) => println("already found WonShare for %s %s".format(winner.network.is, winner.id.is))
 					case _ =>
-						val start = WonShare.find(By_<(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is), Order(WonShare.id, Descending)) match {
+						val start = WonShare.find(By_<(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is), OrderBy(WonShare.id, Descending)) match {
 							case Full(startShare: WonShare) => startShare.id.is
 							case _ => 0
 						}
