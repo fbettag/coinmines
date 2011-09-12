@@ -54,6 +54,7 @@ import scala.collection.immutable.HashMap
 
 import lib._
 import model._
+import snippet._
 
 case object Tick
 
@@ -443,7 +444,6 @@ class StatComet extends CometActor {
 		".user_btc_shares_total *" #> r.bitcoin.total &
 		".user_btc_shares_round *" #> r.bitcoin.round &
 		".user_btc_shares_stale *" #> r.bitcoin.stale &
-		".user_btc_balance *" #> "%.8f BTC".format(r.user.balance_btc.is) &
 		".user_btc_reward *" #> "%.8f BTC".format(r.bitcoin.reward) &
 		".user_btc_unconfirmed *" #> "%.8f BTC".format(r.bitcoin.rewardUnconfirmed) &
 		".user_btc_payout *" #> "%.8f BTC".format(r.bitcoin.totalPayout) &
@@ -451,7 +451,6 @@ class StatComet extends CometActor {
 		".user_nmc_shares_total *" #> r.namecoin.total &
 		".user_nmc_shares_round *" #> r.namecoin.round &
 		".user_nmc_shares_stale *" #> r.namecoin.stale &
-		".user_nmc_balance *" #> "%.8f NMC".format(r.user.balance_nmc.is) &
 		".user_nmc_reward *" #> "%.8f NMC".format(r.namecoin.reward) &
 		".user_nmc_unconfirmed *" #> "%.8f NMC".format(r.namecoin.rewardUnconfirmed) &
 		".user_nmc_payout *" #> "%.8f NMC".format(r.namecoin.totalPayout) &
@@ -459,10 +458,10 @@ class StatComet extends CometActor {
 		".user_slc_shares_total *" #> r.solidcoin.total &
 		".user_slc_shares_round *" #> r.solidcoin.round &
 		".user_slc_shares_stale *" #> r.solidcoin.stale &
-		".user_slc_balance *" #> "%.8f SLC".format(r.user.balance_slc.is) &
 		".user_slc_reward *" #> "%.8f SLC".format(r.solidcoin.reward) &
 		".user_slc_unconfirmed *" #> "%.8f SLC".format(r.solidcoin.rewardUnconfirmed) &
 		".user_slc_payout *" #> "%.8f SLC".format(r.solidcoin.totalPayout) &
+		new Account().balance &
 		cssSel(r.global)
 
 	def cssSel(r: StatsGlobalReply): CssSel =
