@@ -74,6 +74,7 @@ class AccountBalance extends LongKeyedMapper[AccountBalance] with IdPK {
 
 	object orphan extends MappedBoolean(this) {
 		override def dbIndexed_? = true
+		override def dbNotNull_? = true
 		override def defaultValue = false
 	}
 

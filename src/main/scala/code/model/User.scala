@@ -195,7 +195,7 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 		override def defaultValue = 0
 	}
 	
-	private def balances(network: String) = AccountBalance.findAll(By(AccountBalance.user, this.id), By(AccountBalance.network, network))
+	private def balances(network: String) = AccountBalance.findAll(By(AccountBalance.user, this.id), By(AccountBalance.network, network), By(AccountBalance.orphan, false))
 	def balances = AccountBalance.findAll(By(AccountBalance.user, this.id))
 
 	def balancesBtc = balances("bitcoin")
@@ -212,7 +212,7 @@ class User extends MegaProtoUser[User] with JsEffects[User] {
 
 	private def payoutFor(network: String) = {
 		val num = AccountBalance.findAll(By(AccountBalance.paid, true), By_<(AccountBalance.balance, 0), By(AccountBalance.network, network),
-			By(AccountBalance.user, this.id)).foldLeft(0.0) { _ + _.balance.toDouble } * (-1)
+			By(AccountBalance.user, this.id), By(AccountBalance.orphan, false)).foldLeft(0.0) { _ + _.balance.toDouble } * (-1)
 		if (num == 0.0) 0.0 else num // 0.0 == -0.0 => true
 	}
 

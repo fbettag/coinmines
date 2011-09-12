@@ -191,7 +191,7 @@ class WonShare extends LongKeyedMapper[WonShare] {
 
 		val h = new Http
 		//val r = (if (this.network.is == "bitcoin") :/("blockexplorer.com") else :/("150.214.61.49", 2750)) / "tx" / this.txid.is
-		val r = :/("150.214.61.49", 2750)) / "tx" / this.txid.is
+		val r = :/("150.214.61.49", 2750) / "tx" / this.txid.is
 		val ignore = r >|
 
 		val output = h(r >- { str => str }).toString

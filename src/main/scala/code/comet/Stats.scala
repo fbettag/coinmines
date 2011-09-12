@@ -71,7 +71,7 @@ case class StatsUserReply(
 	bitcoin: StatsUserCoinReply, namecoin: StatsUserCoinReply, solidcoin: StatsUserCoinReply,
 	global: StatsGlobalReply) extends StatsReply
 
-case class StatsGlobalCoinReply(hashrate: Int, shares: Long, payout: Double, lasthash: DateTime) extends StatsReply
+case class StatsGlobalCoinReply(hashrate: Int, shares: Long, stales: Long, payout: Double, lasthash: DateTime) extends StatsReply
 case class StatsGlobalReply(
 	lastUpdate: DateTime,
 	hashrate: Int, workers: Int,
@@ -89,12 +89,12 @@ object StatCollector extends LiftActor {
 		case a: StatsGatherUser =>
 			a.target ! getUser(a.user)
 		case a: StatsCleanup =>
+			ActorPing.schedule(this, a, 5 minutes)
 			val doCalculations_? = if (!a.calculate) Props.get("pool.calculate").openOr("false").toBoolean else true
 			cleanupJob(doCalculations_?)
-			ActorPing.schedule(this, a, 5 minutes)
 		case Tick =>
-			minuteJob
 			ActorPing.schedule(this, Tick, 1 minute)
+			minuteJob
 		case _ =>
 	}
 
@@ -104,7 +104,7 @@ object StatCollector extends LiftActor {
 	def transactionFee = 0.02
 
 	private var globalReply =
-		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0.0, DateTimeHelpers.getDate), StatsGlobalCoinReply(0, 0, 0.0, DateTimeHelpers.getDate), StatsGlobalCoinReply(0, 0, 0.0, DateTimeHelpers.getDate))
+		StatsGlobalReply(invalidDate, 0, 0, StatsGlobalCoinReply(0, 0, 0, 0.0, DateTimeHelpers.getDate), StatsGlobalCoinReply(0, 0, 0, 0.0, DateTimeHelpers.getDate), StatsGlobalCoinReply(0, 0, 0, 0.0, DateTimeHelpers.getDate))
 	private var userReplies: Map[String, StatsUserReply] = Map()
 	
 
@@ -212,10 +212,19 @@ object StatCollector extends LiftActor {
 				WonShare.find(By(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is)) match {
 					case Full(a: WonShare) => println("already found WonShare for %s %s".format(winner.network.is, winner.id.is))
 					case _ =>
+						// FIXME Find last WonShare before winner.id.is, so we can exactly find out who calculated how many shares.
+						//WonShare.find
 						val shareCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is))
 						val staleCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
+						val user = PoolWorker.find(By(PoolWorker.username, winner.username.is)) match {
+							case Full(pw: PoolWorker) => User.find(By(User.id, pw.user.is)) match {
+								case Full(u: User) if (u.name.is != "") => u.name
+								case _ => "undetermined"
+							}
+							case _ => "undetermined"
+						}
 						val ws = WonShare.create.id(winner.id.is).
-							username(winner.username.is).
+							username(user).
 							ourResult(winner.ourResult.is).
 							upstreamResult(winner.upstreamResult.is).
 							reason(winner.reason.is).
@@ -273,15 +282,15 @@ object StatCollector extends LiftActor {
 		/* Update blocks */
 		var diff = Coind.run(BtcCmd("getdifficulty")).toDouble
 		var block = Coind.run(BtcCmd("getblocknumber")).toLong
-		addBlock("bitcoin", diff, block)
+		try { addBlock("bitcoin", diff, block) } catch { case _ => }
 		
 		diff = Coind.run(NmcCmd("getdifficulty")).toDouble
 		block = Coind.run(NmcCmd("getblocknumber")).toLong
-		addBlock("namecoin", diff, block)
+		try { addBlock("namecoin", diff, block) } catch { case _ => }
 		
 		diff = Coind.run(SlcCmd("getdifficulty")).toDouble
 		block = Coind.run(SlcCmd("getblocknumber")).toLong
-		addBlock("solidcoin", diff, block)
+		try { addBlock("solidcoin", diff, block) } catch { case _ => }
 
 	}
 
@@ -343,6 +352,14 @@ object StatCollector extends LiftActor {
 			val globalSharesNmc = sharesQuery("namecoin")
 			val globalSharesSlc = sharesQuery("solidcoin")
 
+			/* Stales */
+			def stalesQuery(network: String) =
+				Share.count(By(Share.network, network), By(Share.ourResult, false))
+
+			val globalStalesBtc = stalesQuery("bitcoin")
+			val globalStalesNmc = stalesQuery("namecoin")
+			val globalStalesSlc = stalesQuery("solidcoin")
+
 			/* Hashrate */
 			def hashrateQuery(network: String) = {
 				val shares = Share.count(By_>(Share.timestamp, currentDate.minusMinutes(10).toDate), By(Share.network, network))
@@ -358,9 +375,9 @@ object StatCollector extends LiftActor {
 			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(10).toDate)).toInt
 
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
-				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, AccountBalance.payoutBtc, WonShare.lasthash("bitcoin")),
-				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, AccountBalance.payoutNmc, WonShare.lasthash("namecoin")),
-				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, AccountBalance.payoutSlc, WonShare.lasthash("solidcoin")))
+				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, globalStalesBtc, AccountBalance.payoutBtc, WonShare.lasthash("bitcoin")),
+				StatsGlobalCoinReply(globalHashrateNmc, globalSharesNmc, globalStalesNmc, AccountBalance.payoutNmc, WonShare.lasthash("namecoin")),
+				StatsGlobalCoinReply(globalHashrateSlc, globalSharesSlc, globalStalesSlc, AccountBalance.payoutSlc, WonShare.lasthash("solidcoin")))
 		}
 		globalReply
 	}
@@ -454,18 +471,22 @@ class StatComet extends CometActor {
 		".global_workers *" #> r.workers &
 		".global_btc_hashrate *" #> "%.3f GH/sec".format(r.bitcoin.hashrate / 1000.0)  &
 		".global_btc_shares *" #> r.bitcoin.shares &
+		".global_btc_stales *" #> r.bitcoin.stales &
 		".global_btc_payout *" #> "%.8f BTC".format(r.bitcoin.payout) &
 		".global_nmc_hashrate *" #> "%.3f GH/sec".format(r.namecoin.hashrate / 1000.0)  &
 		".global_nmc_shares *" #> r.namecoin.shares &
+		".global_nmc_stales *" #> r.namecoin.stales &
 		".global_nmc_payout *" #> "%.8f NMC".format(r.namecoin.payout) &
 		".global_slc_hashrate *" #> "%.3f GH/sec".format(r.solidcoin.hashrate / 1000.0)  &
 		".global_slc_shares *" #> r.solidcoin.shares &
+		".global_slc_stales *" #> r.solidcoin.stales &
 		".global_slc_payout *" #> "%.8f SLC".format(r.solidcoin.payout) &
 		".blocks_row *" #> WonShare.findAll(OrderBy(WonShare.timestamp, Descending), MaxRows(50)).map(s =>
 			".blocks_network *" #> { val n = s.network.is; n(0).toUpperCase + n.substring(1, n.length) } &
 			".blocks_time *" #> DateTimeHelpers.getDate(s.timestamp.is).toString("yyyy-MM-dd HH:mm:ss z") &
 			".blocks_shares *" #> s.shares.toString &
 			".blocks_confirms *" #> s.confirmations.toString &
+			".blocks_who *" #> s.username.toString &
 			".blocks_id *" #> s.blockLink
 		)
 
