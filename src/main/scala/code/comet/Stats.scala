@@ -216,9 +216,9 @@ object StatCollector extends LiftActor {
 						//WonShare.find
 						val shareCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is))
 						val staleCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
-						val user = PoolWorker.find(By(PoolWorker.username, winner.username.is)) match {
+						val user: String = PoolWorker.find(By(PoolWorker.username, winner.username.is)) match {
 							case Full(pw: PoolWorker) => User.find(By(User.id, pw.user.is)) match {
-								case Full(u: User) if (u.name.is != "") => u.name
+								case Full(u: User) if (u.name.is != "") => u.name.is
 								case _ => "undetermined"
 							}
 							case _ => "undetermined"
@@ -372,7 +372,7 @@ object StatCollector extends LiftActor {
 			val globalHashrate = globalHashrateBtc + globalHashrateNmc + globalHashrateSlc
 
 			/* Workers */
-			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(10).toDate)).toInt
+			val globalWorkers = PoolWorker.count(By_>(PoolWorker.lasthash, currentDate.minusMinutes(20).toDate)).toInt
 
 			globalReply = StatsGlobalReply(currentDate, globalHashrate, globalWorkers,
 				StatsGlobalCoinReply(globalHashrateBtc, globalSharesBtc, globalStalesBtc, AccountBalance.payoutBtc, WonShare.lasthash("bitcoin")),
