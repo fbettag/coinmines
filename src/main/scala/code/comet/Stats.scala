@@ -213,10 +213,12 @@ object StatCollector extends LiftActor {
 				WonShare.find(By(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is)) match {
 					case Full(a: WonShare) => println("already found WonShare for %s %s".format(winner.network.is, winner.id.is))
 					case _ =>
-						// FIXME Find last WonShare before winner.id.is, so we can exactly find out who calculated how many shares.
-						//WonShare.find
-						val shareCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is))
-						val staleCount = Share.count(By(Share.network, winner.network.is), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
+						val start = WonShare.find(By_<(WonShare.id, winner.id.is), By(WonShare.network, winner.network.is), Order(WonShare.id, Descending)) match {
+							case Full(startShare: WonShare) => startShare.id.is
+							case _ => 0
+						}
+						val shareCount = Share.count(By(Share.network, winner.network.is), By_>(Share.id, start), By_<(Share.id, winner.id.is))
+						val staleCount = Share.count(By(Share.network, winner.network.is), By_>(Share.id, start), By_<(Share.id, winner.id.is), By(Share.ourResult, false))
 						val user: String = PoolWorker.find(By(PoolWorker.username, winner.username.is)) match {
 							case Full(pw: PoolWorker) => User.find(By(User.id, pw.user.is)) match {
 								case Full(u: User) if (u.name.is != "") => u.name.is
