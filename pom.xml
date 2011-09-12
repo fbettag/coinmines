@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ag.bett.lift</groupId>
   <artifactId>coinmines</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
   <packaging>war</packaging>
   <name>coinmines</name>
   <inceptionYear>2010</inceptionYear>
