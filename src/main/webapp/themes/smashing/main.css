@@ -429,3 +429,13 @@ li:last-child .hentry, #content > .hentry {border: 0; margin: 0;}
 .worker_name {width: 100px;}
 
 #ghstats { margin-top:0.1em;float:right;text-align:right; }
+#lasthash_btc, #lasthash_nmc, #lasthash_slc, #worker_count {
+	display: inline-block;
+	width: 110px;
+}
+
+#worker_count {
+	text-align:left;
+	padding-left:15px;
+	width: 95px;
+}

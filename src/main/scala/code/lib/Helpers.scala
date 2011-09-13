@@ -80,11 +80,13 @@ object DateTimeHelpers {
 
 	def durationAsString(start: DateTime) = (new PeriodFormatterBuilder)
 			.printZeroAlways
+			.appendDays
+			.appendSuffix(" day ", " days ")
 			.minimumPrintedDigits(2)
 			.appendHours
-			.appendSuffix(":")
+			.appendSeparator(":")
 			.appendMinutes
-			.appendSuffix(":")
+			.appendSeparator(":")
 			.appendMinutes
 			.toFormatter
 			.print(new Period(start, DateTimeHelpers.getDate))
